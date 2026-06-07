@@ -391,12 +391,22 @@ button { cursor: pointer; }
   color: var(--orange-dark);
   transform: translateX(3px);
 }
+.today-title {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
 .today-list strong {
   min-width: 0;
   overflow: hidden;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.today-title small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
 }
 .today-time { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
 .today-source {

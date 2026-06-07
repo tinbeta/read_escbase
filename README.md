@@ -111,9 +111,13 @@ Chạy lần lượt hai file trong Supabase SQL Editor:
 
 1. `supabase/migrations/001_create_analyses.sql`
 2. `supabase/migrations/002_create_ai_daily_usage.sql`
+3. `supabase/migrations/003_add_analysis_token_count.sql`
 
 Migration thứ hai tạo bộ đếm giao dịch để nhiều request đồng thời không vượt ngưỡng.
 Production sẽ không gọi OpenAI nếu thiếu cấu hình Supabase.
+Migration thứ ba thêm `token_count` để lưu và hiển thị số token đã dùng cho từng bài.
+Bài đã tạo trước migration thứ ba sẽ hiển thị "chưa lưu token" vì trước đó DB
+chưa lưu số token theo từng bài.
 
 Thanh quota chỉ đếm request của ứng dụng này từ thời điểm bật Supabase. Để số liệu
 khớp ưu đãi thực tế, dùng một OpenAI project/API key riêng và không dùng key đó ở

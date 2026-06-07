@@ -31,6 +31,7 @@ export type StoredAnalysis = {
   sourceUrl: string;
   sourceType: SourceType;
   createdAt: string;
+  tokenCount: number | null;
   result: AnalysisResult;
 };
 
@@ -39,6 +40,7 @@ export type AnalysisListItem = {
   title: string;
   sourceType: SourceType;
   createdAt: string;
+  tokenCount: number | null;
 };
 
 export type TodayAnalyses = {

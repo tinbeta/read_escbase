@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         sourceUrl: source.sourceUrl,
         sourceType: source.sourceType,
         result: analyzed.result,
+        tokenCount: totalTokens,
       });
 
       return NextResponse.json({
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
         sourceUrl: source.sourceUrl,
         sourceType: source.sourceType,
         createdAt: new Date().toISOString(),
+        tokenCount: totalTokens,
         result: analyzed.result,
         cached: false,
         requestTokens: totalTokens,

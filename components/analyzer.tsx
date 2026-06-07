@@ -46,6 +46,11 @@ function formatVietnamTime(value: string) {
   }).format(new Date(value));
 }
 
+function formatTokenCount(value: number | null) {
+  if (!value) return "chưa lưu token";
+  return `${new Intl.NumberFormat("vi-VN").format(value)} token`;
+}
+
 export function Analyzer({ initialTodayAnalyses }: Props) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,6 +109,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
           title: body.result.title,
           sourceType: body.sourceType,
           createdAt: body.createdAt,
+          tokenCount: body.tokenCount ?? body.requestTokens ?? null,
         };
         setTodayItems((items) => [newItem, ...items.filter((item) => item.slug !== body.slug)].slice(0, 10));
         setTodayCount((count) => count + 1);
@@ -220,7 +226,10 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
               <Link href={getAnalysisPath(item.title, item.slug)} key={item.slug}>
                 <span className="today-time">{formatVietnamTime(item.createdAt)}</span>
                 <span className="today-source">{item.sourceType === "x" ? "X" : "Blog"}</span>
-                <strong>{item.title}</strong>
+                <span className="today-title">
+                  <strong>{item.title}</strong>
+                  <small>{formatTokenCount(item.tokenCount)}</small>
+                </span>
                 <ArrowUpRight size={17} aria-hidden="true" />
               </Link>
             ))}
