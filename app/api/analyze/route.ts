@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeSource } from "@/lib/analyze";
 import { analyzeRequestSchema } from "@/lib/schemas";
@@ -16,12 +17,18 @@ export const maxDuration = 60;
 
 const attempts = new Map<string, number[]>();
 
-function isRateLimited(request: NextRequest): boolean {
+function requestKey(request: NextRequest): string {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const salt = process.env.RATE_LIMIT_SALT || "local-dev";
+  return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
+}
+
+function isRateLimited(request: NextRequest): boolean {
+  const key = requestKey(request);
   const now = Date.now();
-  const recent = (attempts.get(ip) ?? []).filter((time) => now - time < 60 * 60 * 1000);
+  const recent = (attempts.get(key) ?? []).filter((time) => now - time < 60 * 60 * 1000);
   recent.push(now);
-  attempts.set(ip, recent);
+  attempts.set(key, recent);
   return recent.length > 10;
 }
 
