@@ -152,10 +152,6 @@ export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Prop
             {copied ? <Check size={17} /> : <Copy size={17} />}
             {copied ? "Đã copy" : "Copy bài"}
           </button>
-          <button type="button" className="primary-action" onClick={shareArticle}>
-            <Share2 size={17} />
-            Chia sẻ
-          </button>
         </div>
       </header>
 
@@ -274,7 +270,11 @@ export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Prop
         )}
       </section>
 
-      <div className="article-return">
+      <div className="article-bottom-actions">
+        <button type="button" className="article-share-action" onClick={shareArticle}>
+          <Share2 size={17} />
+          Chia sẻ
+        </button>
         {onAnalyzeAnother ? (
           <button type="button" onClick={onAnalyzeAnother}>
             <ArrowUpRight size={17} />
