@@ -123,7 +123,7 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
       <section className="lead-card">
         <div className="section-icon"><BookOpen size={20} /></div>
         <div>
-          <p className="eyebrow">Tóm tắt nội dung</p>
+          <p className="eyebrow">Đọc nhanh</p>
           <h2>Tóm tắt nội dung</h2>
           <p>{result.overview}</p>
         </div>
