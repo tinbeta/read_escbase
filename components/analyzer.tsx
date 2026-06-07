@@ -121,13 +121,10 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   return (
     <>
       <section className="hero">
-        <span className="hero-leaf hero-leaf-one" aria-hidden="true" />
-        <span className="hero-leaf hero-leaf-two" aria-hidden="true" />
-        <span className="hero-leaf hero-leaf-three" aria-hidden="true" />
         <div className="hero-content">
           <div className="hero-brand">
             <Image
-              src="/esclogo-botanical-v2.png"
+              src="/esclogo-classic-v2.png"
               alt=""
               width={72}
               height={72}
@@ -138,9 +135,21 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
             </span>
           </div>
           <h1>
-            Đọc nhanh <em>X</em>
-            <br />
-            <span>hoặc</span> <em>Blog</em>
+            <span className="headline-line">
+              <span className="headline-copy">Đọc nhanh</span>
+              <span className="x-logo" aria-label="X">
+                <Image
+                  src="/x-logo-official.svg"
+                  alt="X"
+                  width={68}
+                  height={70}
+                />
+              </span>
+            </span>
+            <span className="headline-line">
+              <span className="headline-copy">hoặc</span>
+              <em>Blog</em>
+            </span>
           </h1>
           <div className="hero-badge">
             <Sparkles size={15} />
