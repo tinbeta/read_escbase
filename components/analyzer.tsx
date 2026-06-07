@@ -32,6 +32,32 @@ const examples = [
   "https://example.com/blog/bai-viet",
 ];
 const TODAY_PAGE_SIZE = 10;
+const loadingSteps = [
+  {
+    label: "Đang đọc nguồn...",
+    detail: "Mở link và lấy nội dung gốc.",
+  },
+  {
+    label: "Đang gom ngữ cảnh...",
+    detail: "Kiểm tra replies, link liên quan và dữ liệu phụ.",
+  },
+  {
+    label: "Đang lọc ý chính...",
+    detail: "Tách dữ kiện, ý kiến cộng đồng và điểm cần chú ý.",
+  },
+  {
+    label: "Đang biên tập tiếng Việt...",
+    detail: "Viết lại thành bản đọc nhanh, rõ ý trên mobile.",
+  },
+  {
+    label: "Đang rà lại kết quả...",
+    detail: "Kiểm tra ngôn ngữ, cấu trúc và phần chia sẻ.",
+  },
+  {
+    label: "Sắp xong rồi...",
+    detail: "Thread dài hoặc có nhiều link có thể mất hơn 30 giây.",
+  },
+] as const;
 
 type Props = {
   initialTodayAnalyses: TodayAnalyses;
@@ -61,8 +87,11 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   const [todayItems, setTodayItems] = useState(initialTodayAnalyses.items);
   const [todayPage, setTodayPage] = useState(1);
   const [todayLoading, setTodayLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const todayTotalPages = Math.max(1, Math.ceil(todayCount / TODAY_PAGE_SIZE));
+  const currentLoadingStep = loadingSteps[loadingStep] ?? loadingSteps[0];
 
   useEffect(() => {
     fetch("/api/quota", { cache: "no-store" })
@@ -72,6 +101,28 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+
+    const startedAt = Date.now();
+
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = (Date.now() - startedAt) / 1000;
+      const nextStep = Math.min(
+        Math.floor(elapsedSeconds / 6),
+        loadingSteps.length - 1,
+      );
+      const earlyProgress = 7 + (Math.min(elapsedSeconds, 42) / 42) * 76;
+      const lateProgress =
+        elapsedSeconds > 42 ? Math.min((elapsedSeconds - 42) / 50, 1) * 11 : 0;
+
+      setLoadingStep(nextStep);
+      setLoadingProgress(Math.min(94, Math.round(earlyProgress + lateProgress)));
+    }, 700);
+
+    return () => window.clearInterval(timer);
+  }, [loading]);
 
   async function pasteUrl() {
     setError("");
@@ -94,6 +145,8 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setLoadingStep(0);
+    setLoadingProgress(7);
     setLoading(true);
 
     try {
@@ -126,6 +179,8 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
       setError(requestError instanceof Error ? requestError.message : "Đã có lỗi xảy ra.");
     } finally {
       setLoading(false);
+      setLoadingStep(0);
+      setLoadingProgress(0);
     }
   }
 
@@ -224,12 +279,31 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
             <button type="submit" disabled={loading || quota?.remaining === 0}>
               {loading ? <LoaderCircle className="spin" size={19} /> : <ArrowRight size={19} />}
               {loading
-                ? "Đang đọc nguồn..."
+                ? currentLoadingStep.label
                 : quota?.remaining === 0
                   ? "Mở lại lúc 07:00"
                   : "Phân tích ngay"}
             </button>
           </form>
+          {loading && (
+            <div className="loading-progress-card" role="status" aria-live="polite">
+              <div className="loading-progress-top">
+                <span>{currentLoadingStep.detail}</span>
+                <strong>{loadingProgress}%</strong>
+              </div>
+              <div
+                className="loading-progress-track"
+                aria-label="Tiến trình phân tích ước lượng"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={loadingProgress}
+                role="progressbar"
+              >
+                <span style={{ width: `${loadingProgress}%` }} />
+              </div>
+              <p>Thường mất 20-60 giây nếu thread dài, có nhiều replies hoặc link ngoài.</p>
+            </div>
+          )}
           {error && <p className="form-error">{error}</p>}
           <p className="privacy-note">
             Link X/Twitter hoặc blog công khai. Nội dung được gửi tới OpenAI để phân tích.
