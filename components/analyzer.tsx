@@ -14,6 +14,7 @@ import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
 import { AnalysisView } from "@/components/analysis-view";
 import { QuotaMeter } from "@/components/quota-meter";
+import { getAnalysisPath } from "@/lib/share-url";
 import type {
   AnalysisListItem,
   QuotaStatus,
@@ -120,39 +121,31 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   return (
     <>
       <section className="hero">
-        <div className="hero-art" aria-hidden="true">
-          <div className="hero-paper hero-paper-quote">
-            <span>“</span>
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="hero-logo-ring">
+        <span className="hero-leaf hero-leaf-one" aria-hidden="true" />
+        <span className="hero-leaf hero-leaf-two" aria-hidden="true" />
+        <span className="hero-leaf hero-leaf-three" aria-hidden="true" />
+        <div className="hero-content">
+          <div className="hero-brand">
             <Image
-              src="/esclogo.png"
+              src="/esclogo-botanical-v2.png"
               alt=""
-              width={420}
-              height={420}
+              width={72}
+              height={72}
               priority
             />
-          </div>
-          <div className="hero-paper hero-paper-story">
-            <b />
-            <i />
-            <i />
-            <i />
-          </div>
-        </div>
-        <div className="hero-content">
-          <div className="hero-badge">
-            <Sparkles size={15} />
-            Escbase AI Reader
+            <span>
+              Escbase <strong>Read</strong>
+            </span>
           </div>
           <h1>
-            Đọc nhanh
+            Đọc nhanh <em>X</em>
             <br />
-            <span>X hoặc Blog</span>
+            <span>hoặc</span> <em>Blog</em>
           </h1>
+          <div className="hero-badge">
+            <Sparkles size={15} />
+            AI reader tiếng Việt
+          </div>
           <p className="hero-copy">
             AI đọc nội dung gốc, phản hồi cộng đồng và các liên kết liên quan, rồi biên tập
             thành bài tiếng Việt rõ ràng.
@@ -215,7 +208,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
         {todayItems.length > 0 ? (
           <div className="today-list">
             {todayItems.map((item) => (
-              <Link href={`/a/${item.slug}`} key={item.slug}>
+              <Link href={getAnalysisPath(item.title, item.slug)} key={item.slug}>
                 <span className="today-time">{formatVietnamTime(item.createdAt)}</span>
                 <span className="today-source">{item.sourceType === "x" ? "X" : "Blog"}</span>
                 <strong>{item.title}</strong>

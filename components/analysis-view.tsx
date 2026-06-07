@@ -19,6 +19,7 @@ import {
 import { useState } from "react";
 import type { AnalysisResult } from "@/lib/schemas";
 import { analysisToText } from "@/lib/format";
+import { getAnalysisPath } from "@/lib/share-url";
 
 type Props = {
   result: AnalysisResult;
@@ -50,7 +51,9 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
   }
 
   async function shareArticle() {
-    const shareUrl = slug ? `${window.location.origin}/a/${slug}` : window.location.href;
+    const shareUrl = slug
+      ? `${window.location.origin}${getAnalysisPath(result.title, slug)}`
+      : window.location.href;
     const data = { title: result.title, url: shareUrl };
     if (navigator.share) {
       await navigator.share(data);
