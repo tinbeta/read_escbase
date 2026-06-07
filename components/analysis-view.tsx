@@ -10,7 +10,6 @@ import {
   MessageCircleMore,
   Quote,
   Share2,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { useState } from "react";
@@ -94,10 +93,6 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
   return (
     <article className="result-shell">
       <header className="article-header">
-        <div className="article-kicker">
-          <Sparkles size={15} />
-          Bản đọc nhanh bằng AI
-        </div>
         <h1>{result.title}</h1>
         <p className="article-subtitle">{result.subtitle}</p>
         <div className="article-meta">

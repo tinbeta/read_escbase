@@ -178,7 +178,7 @@ button { cursor: pointer; }
   line-height: 1.55;
 }
 .quota-scope { margin: 9px 0 0; color: #89928b; font-size: 9px; line-height: 1.5; }
-.hero-badge, .article-kicker {
+.hero-badge {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -190,11 +190,6 @@ button { cursor: pointer; }
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-}
-.article-kicker {
-  border-color: rgba(20, 37, 28, 0.16);
-  background: #f2ead8;
-  color: var(--muted);
 }
 .hero h1 {
   margin: 30px 0 22px;
@@ -477,7 +472,7 @@ button { cursor: pointer; }
 }
 .article-header h1 {
   max-width: 760px;
-  margin: 18px 0 12px;
+  margin: 0 0 12px;
   font-family: var(--font-serif), serif;
   font-size: clamp(38px, 6vw, 66px);
   line-height: 1.02;
@@ -486,9 +481,10 @@ button { cursor: pointer; }
 .article-subtitle {
   max-width: 690px;
   margin: 0;
-  color: var(--muted);
-  font-size: 17px;
-  line-height: 1.7;
+  color: #526157;
+  font-size: clamp(17px, 2.1vw, 21px);
+  font-weight: 620;
+  line-height: 1.62;
 }
 .article-meta {
   display: flex;
@@ -569,19 +565,32 @@ button { cursor: pointer; }
   font-size: 27px;
   letter-spacing: -0.025em;
 }
-.point-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.point-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .point-card {
-  padding: 20px;
+  padding: 22px;
   border: 1px solid var(--line);
-  border-radius: 15px;
-  background: #faf7f0;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(245, 155, 66, 0.14), transparent 8rem),
+    #faf7f0;
 }
-.point-card h3 { margin: 13px 0 7px; font-size: 16px; }
-.point-card p, .fact-list p, .source-list p, .community-list p {
+.point-card h3 {
+  margin: 15px 0 10px;
+  font-size: clamp(18px, 2.1vw, 22px);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+.point-card p, .fact-list p, .source-list p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.65;
+}
+.point-card p {
+  color: #516157;
+  font-size: clamp(15px, 1.7vw, 17px);
+  font-weight: 600;
+  line-height: 1.78;
 }
 .evidence {
   display: inline-flex;
@@ -664,7 +673,13 @@ button { cursor: pointer; }
   font-weight: 700;
   text-transform: uppercase;
 }
-.community-summary { font-family: var(--font-serif), serif; font-size: 21px; line-height: 1.5; }
+.community-summary {
+  color: #24382c;
+  font-family: var(--font-serif), serif;
+  font-size: clamp(22px, 2.9vw, 29px);
+  font-weight: 700;
+  line-height: 1.45;
+}
 .community-list { display: grid; gap: 10px; margin-top: 20px; }
 .community-list > div {
   display: grid;
@@ -675,15 +690,30 @@ button { cursor: pointer; }
   background: rgba(255, 255, 255, 0.6);
 }
 .community-list strong { display: block; margin-bottom: 3px; color: var(--ink); }
+.community-list p {
+  margin: 0;
+  color: #526157;
+  font-size: clamp(15px, 1.75vw, 17px);
+  font-weight: 600;
+  line-height: 1.72;
+}
 .questions-box {
   margin-top: 15px;
   padding: 17px;
   border: 1px dashed rgba(23, 33, 27, 0.25);
   border-radius: 12px;
-  font-size: 12px;
+  color: #526157;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.7;
 }
 .questions-box p { margin: 7px 0 0; color: var(--muted); }
-.empty-copy { color: var(--muted); font-size: 13px; }
+.empty-copy {
+  color: #526157;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.7;
+}
 
 .source-list { display: grid; gap: 10px; }
 .source-list a {
@@ -717,13 +747,15 @@ button { cursor: pointer; }
   display: block;
   margin-bottom: 7px;
   color: var(--ink);
-  font-size: 14px;
+  font-size: clamp(16px, 1.9vw, 19px);
+  line-height: 1.35;
 }
 .deep-dive-list p {
   margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
+  color: #526157;
+  font-size: clamp(15px, 1.75vw, 17px);
+  font-weight: 600;
+  line-height: 1.75;
 }
 
 .caveat-card, .takeaway-card {
@@ -833,7 +865,7 @@ button { cursor: pointer; }
   .today-list a { grid-template-columns: 42px 45px minmax(0, 1fr) auto; gap: 8px; }
   .article-header { border-radius: 20px 20px 0 0; }
   .article-header h1 { font-size: 39px; }
-  .article-subtitle { font-size: 14px; }
+  .article-subtitle { font-size: 17px; line-height: 1.6; }
   .article-actions button { flex: 1; }
   .lead-card { grid-template-columns: 1fr; }
   .lead-card p:last-child { font-size: 21px; }
