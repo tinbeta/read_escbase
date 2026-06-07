@@ -1,4 +1,4 @@
-# ThreadBrief VN
+# Escbase Read
 
 Ứng dụng Next.js đọc thread X hoặc bài blog, phân tích bằng OpenAI và lưu bài chia sẻ vào Supabase.
 

@@ -2,7 +2,28 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import type { AnalysisResult } from "@/lib/schemas";
-import type { SourceType, StoredAnalysis } from "@/lib/types";
+import type {
+  SourceType,
+  StoredAnalysis,
+  TodayAnalyses,
+} from "@/lib/types";
+
+const VIETNAM_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function getVietnamDayBounds(now = new Date()) {
+  const vietnamNow = new Date(now.getTime() + VIETNAM_UTC_OFFSET_MS);
+  const startUtc =
+    Date.UTC(
+      vietnamNow.getUTCFullYear(),
+      vietnamNow.getUTCMonth(),
+      vietnamNow.getUTCDate(),
+    ) - VIETNAM_UTC_OFFSET_MS;
+
+  return {
+    start: new Date(startUtc).toISOString(),
+    end: new Date(startUtc + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
 
 export function getSupabaseAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -85,5 +106,34 @@ export async function getAnalysisBySlug(slug: string): Promise<StoredAnalysis | 
     sourceType: data.source_type as SourceType,
     result: data.result as AnalysisResult,
     createdAt: data.created_at,
+  };
+}
+
+export async function getTodayAnalyses(limit = 10): Promise<TodayAnalyses> {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) return { count: 0, items: [] };
+
+  const { start, end } = getVietnamDayBounds();
+  const { data, error, count } = await supabase
+    .from("analyses")
+    .select("slug, title, source_type, created_at", { count: "exact" })
+    .gte("created_at", start)
+    .lt("created_at", end)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) {
+    if (error) console.error("Supabase daily analyses query failed:", error.message);
+    return { count: 0, items: [] };
+  }
+
+  return {
+    count: count ?? data.length,
+    items: data.map((item) => ({
+      slug: item.slug,
+      title: item.title,
+      sourceType: item.source_type as SourceType,
+      createdAt: item.created_at,
+    })),
   };
 }

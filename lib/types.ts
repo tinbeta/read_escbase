@@ -34,6 +34,18 @@ export type StoredAnalysis = {
   result: AnalysisResult;
 };
 
+export type AnalysisListItem = {
+  slug: string;
+  title: string;
+  sourceType: SourceType;
+  createdAt: string;
+};
+
+export type TodayAnalyses = {
+  count: number;
+  items: AnalysisListItem[];
+};
+
 export type QuotaStatus = {
   model: string;
   trackedUsed: number;

@@ -15,8 +15,34 @@ const serif = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "ThreadBrief — Hiểu nhanh mọi đường dẫn",
-  description: "Phân tích thread X, phản hồi cộng đồng và bài blog bằng AI.",
+  metadataBase: new URL("https://read.escbase.xyz"),
+  title: {
+    default: "Escbase Read",
+    template: "%s | Escbase Read",
+  },
+  description: "Đọc nhanh X hoặc Blog bằng AI.",
+  openGraph: {
+    title: "Escbase Read",
+    description: "Đọc nhanh X hoặc Blog bằng AI.",
+    url: "https://read.escbase.xyz",
+    siteName: "Escbase Read",
+    locale: "vi_VN",
+    type: "website",
+    images: [
+      {
+        url: "/escbase-read-og.png",
+        width: 1200,
+        height: 630,
+        alt: "Escbase Read",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Escbase Read",
+    description: "Đọc nhanh X hoặc Blog bằng AI.",
+    images: ["/escbase-read-og.png"],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

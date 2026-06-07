@@ -51,7 +51,7 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
 
   async function shareArticle() {
     const shareUrl = slug ? `${window.location.origin}/a/${slug}` : window.location.href;
-    const data = { title: result.title, text: result.subtitle, url: shareUrl };
+    const data = { title: result.title, url: shareUrl };
     if (navigator.share) {
       await navigator.share(data);
     } else {
