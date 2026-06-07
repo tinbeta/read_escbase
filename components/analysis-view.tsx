@@ -2,14 +2,23 @@
 
 import {
   ArrowUpRight,
+  BadgeCheck,
   BookOpen,
   Check,
   Clock3,
+  Compass,
   Copy,
+  ExternalLink,
+  Layers3,
+  Leaf,
   Link2,
+  Lightbulb,
   MessageCircleMore,
+  PenLine,
   Quote,
   Share2,
+  ShieldAlert,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { useState } from "react";
@@ -22,7 +31,11 @@ type Props = {
   result: AnalysisResult;
   sourceUrl: string;
   slug?: string | null;
+  onAnalyzeAnother?: () => void;
 };
+
+type EvidenceType = AnalysisResult["mainPoints"][number]["evidence"];
+type DeepDiveKind = "takeaway" | "caveat" | "source" | "timeline";
 
 const evidenceLabels = {
   author_claim: "Tác giả nêu",
@@ -38,27 +51,57 @@ const sentimentLabels = {
   unavailable: "Không có dữ liệu",
 };
 
+const evidenceIconMap = {
+  author_claim: PenLine,
+  supported_by_link: Link2,
+  context: Compass,
+} satisfies Record<EvidenceType, typeof PenLine>;
+
+const pointLeadIcons = [Lightbulb, Sparkles, BadgeCheck, Leaf, Layers3, Compass];
+
+const deepDiveIconMap = {
+  takeaway: BadgeCheck,
+  caveat: ShieldAlert,
+  source: ExternalLink,
+  timeline: Clock3,
+} satisfies Record<DeepDiveKind, typeof BadgeCheck>;
+
+function getShortLead(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 86) return normalized;
+  const sentence = normalized.match(/^.{28,86}?[.!?。]|^.{28,86}?(?=,|;|:)/u)?.[0];
+  if (sentence) return sentence.replace(/[.!?。,:;]+$/u, "");
+  return `${normalized.slice(0, 82).trim()}...`;
+}
+
 function buildDeepDiveItems(result: AnalysisResult) {
-  const items: Array<{ title: string; body: string }> = [];
+  const items: Array<{ kind: DeepDiveKind; title: string; body?: string }> = [];
 
   if (result.takeaway) {
-    items.push({ title: "Kết luận cần nhớ", body: result.takeaway });
+    items.push({ kind: "takeaway", title: "Kết luận cần nhớ", body: result.takeaway });
   }
 
   for (const caveat of result.caveats.slice(0, 4)) {
-    items.push({ title: "Điểm cần thận trọng", body: caveat });
+    const title = getShortLead(caveat);
+    items.push({
+      kind: "caveat",
+      title,
+      body: title === caveat ? undefined : caveat,
+    });
   }
 
   for (const source of result.linkedSources.slice(0, 3)) {
     items.push({
-      title: `Link tác giả dẫn: ${source.title}`,
+      kind: "source",
+      title: source.title,
       body: `${source.contribution} Hỗ trợ: ${source.supports}`,
     });
   }
 
   for (const item of result.timeline.slice(0, 3)) {
     items.push({
-      title: `Bối cảnh thời gian: ${item.time}`,
+      kind: "timeline",
+      title: item.time,
       body: item.event,
     });
   }
@@ -66,9 +109,10 @@ function buildDeepDiveItems(result: AnalysisResult) {
   return items;
 }
 
-export function AnalysisView({ result, sourceUrl, slug }: Props) {
+export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Props) {
   const [copied, setCopied] = useState(false);
   const deepDiveItems = buildDeepDiveItems(result);
+  const evidenceTypes = Array.from(new Set(result.mainPoints.map((point) => point.evidence)));
 
   async function copyArticle() {
     await navigator.clipboard.writeText(analysisToText(result, sourceUrl));
@@ -132,16 +176,32 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
             <h2>Bài học chính</h2>
           </div>
         </div>
-        <div className="point-list">
-          {result.mainPoints.map((point, index) => (
-            <div className="point-card" key={`${point.title}-${index}`}>
-              <span className={`evidence evidence-${point.evidence}`}>
-                {evidenceLabels[point.evidence]}
+        <div className="evidence-legend" aria-label="Chú thích bằng chứng">
+          {evidenceTypes.map((evidence) => {
+            const EvidenceIcon = evidenceIconMap[evidence];
+            return (
+              <span className={`evidence evidence-${evidence}`} key={evidence}>
+                <EvidenceIcon size={13} />
+                {evidenceLabels[evidence]}
               </span>
-              <h3>{point.title}</h3>
-              <p>{point.explanation}</p>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+        <div className="point-list">
+          {result.mainPoints.map((point, index) => {
+            const LeadIcon = pointLeadIcons[index % pointLeadIcons.length];
+
+            return (
+              <div className={`point-card point-tone-${index % 6}`} key={`${point.title}-${index}`}>
+                <div className="idea-lead" aria-label={`Ý ${index + 1}: ${evidenceLabels[point.evidence]}`}>
+                  <span><LeadIcon size={19} /></span>
+                  <strong>{String(index + 1).padStart(2, "0")}</strong>
+                </div>
+                <h3>{point.title}</h3>
+                <p>{point.explanation}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -159,10 +219,12 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
             <p className="community-summary">{result.community.summary}</p>
             <div className="community-list">
               {result.community.highlights.map((item, index) => (
-                <div key={`${item.author}-${index}`}>
-                  <Users size={16} />
+                <div className={`community-card community-tone-${index % 6}`} key={`${item.author}-${index}`}>
+                  <span className={`author-chip author-tone-${index % 6}`}>
+                    <Users size={15} />
+                    {item.author}
+                  </span>
                   <p>
-                    <strong>{item.author}</strong>
                     {item.commentary}
                   </p>
                 </div>
@@ -192,12 +254,20 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
         </div>
         {deepDiveItems.length > 0 ? (
           <div className="deep-dive-list">
-            {deepDiveItems.map((item, index) => (
-              <div key={`${item.title}-${index}`}>
-                <strong>{item.title}</strong>
-                <p>{item.body}</p>
-              </div>
-            ))}
+            {deepDiveItems.map((item, index) => {
+              const DeepDiveIcon = deepDiveIconMap[item.kind];
+
+              return (
+                <div className={`deep-dive-card deep-dive-tone-${index % 6}`} key={`${item.kind}-${item.title}-${index}`}>
+                  <div className="idea-lead" aria-label={`Phân tích ${index + 1}`}>
+                    <span><DeepDiveIcon size={19} /></span>
+                    <strong>{String(index + 1).padStart(2, "0")}</strong>
+                  </div>
+                  <h3>{item.title}</h3>
+                  {item.body && <p>{item.body}</p>}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="empty-copy">Không có thêm dữ liệu chuyên sâu từ nguồn này.</p>
@@ -205,10 +275,17 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
       </section>
 
       <div className="article-return">
-        <Link href="/">
-          <ArrowUpRight size={17} />
-          Phân tích bài khác
-        </Link>
+        {onAnalyzeAnother ? (
+          <button type="button" onClick={onAnalyzeAnother}>
+            <ArrowUpRight size={17} />
+            Phân tích bài khác
+          </button>
+        ) : (
+          <Link href="/">
+            <ArrowUpRight size={17} />
+            Phân tích bài khác
+          </Link>
+        )}
       </div>
     </article>
   );

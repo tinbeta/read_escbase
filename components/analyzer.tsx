@@ -148,6 +148,16 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
     }
   }
 
+  function analyzeAnother() {
+    setAnalysis(null);
+    setError("");
+    setUrl("");
+    window.requestAnimationFrame(() => {
+      document.querySelector(".hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      inputRef.current?.focus({ preventScroll: true });
+    });
+  }
+
   return (
     <>
       <section className="hero">
@@ -299,6 +309,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
             result={analysis.result}
             sourceUrl={analysis.sourceUrl}
             slug={analysis.slug}
+            onAnalyzeAnother={analyzeAnother}
           />
         </div>
       )}
