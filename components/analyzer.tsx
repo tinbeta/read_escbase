@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnalysisView } from "@/components/analysis-view";
 import { QuotaMeter } from "@/components/quota-meter";
 import { getAnalysisPath } from "@/lib/share-url";
@@ -21,7 +21,6 @@ import type {
   StoredAnalysis,
   TodayAnalyses,
 } from "@/lib/types";
-import { useEffect } from "react";
 
 type AnalysisResponse = StoredAnalysis & {
   cached?: boolean;
@@ -32,6 +31,7 @@ const examples = [
   "https://x.com/username/status/123...",
   "https://example.com/blog/bai-viet",
 ];
+const TODAY_PAGE_SIZE = 10;
 
 type Props = {
   initialTodayAnalyses: TodayAnalyses;
@@ -59,7 +59,10 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [todayCount, setTodayCount] = useState(initialTodayAnalyses.count);
   const [todayItems, setTodayItems] = useState(initialTodayAnalyses.items);
+  const [todayPage, setTodayPage] = useState(1);
+  const [todayLoading, setTodayLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const todayTotalPages = Math.max(1, Math.ceil(todayCount / TODAY_PAGE_SIZE));
 
   useEffect(() => {
     fetch("/api/quota", { cache: "no-store" })
@@ -111,8 +114,10 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
           createdAt: body.createdAt,
           tokenCount: body.tokenCount ?? body.requestTokens ?? null,
         };
-        setTodayItems((items) => [newItem, ...items.filter((item) => item.slug !== body.slug)].slice(0, 10));
         setTodayCount((count) => count + 1);
+        setTodayPage(1);
+        setTodayItems((items) => [newItem, ...items.filter((item) => item.slug !== body.slug)].slice(0, TODAY_PAGE_SIZE));
+        void loadTodayPage(1, true);
       }
       window.setTimeout(() => {
         document.getElementById("analysis-result")?.scrollIntoView({ behavior: "smooth" });
@@ -121,6 +126,25 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
       setError(requestError instanceof Error ? requestError.message : "Đã có lỗi xảy ra.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadTodayPage(page: number, force = false) {
+    if (page < 1 || page > todayTotalPages || (!force && page === todayPage)) return;
+    setTodayLoading(true);
+    try {
+      const response = await fetch(`/api/analyses/today?page=${page}&pageSize=${TODAY_PAGE_SIZE}`, {
+        cache: "no-store",
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Không thể tải trang bài hôm nay.");
+      setTodayItems(body.items ?? []);
+      setTodayCount(body.count ?? 0);
+      setTodayPage(page);
+    } catch (pageError) {
+      setError(pageError instanceof Error ? pageError.message : "Không thể tải trang bài hôm nay.");
+    } finally {
+      setTodayLoading(false);
     }
   }
 
@@ -221,19 +245,42 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
         </div>
 
         {todayItems.length > 0 ? (
-          <div className="today-list">
-            {todayItems.map((item) => (
-              <Link href={getAnalysisPath(item.title, item.slug)} key={item.slug}>
-                <span className="today-time">{formatVietnamTime(item.createdAt)}</span>
-                <span className="today-source">{item.sourceType === "x" ? "X" : "Blog"}</span>
-                <span className="today-title">
-                  <strong>{item.title}</strong>
-                  <small>{formatTokenCount(item.tokenCount)}</small>
+          <>
+            <div className={`today-list${todayLoading ? " today-list-loading" : ""}`}>
+              {todayItems.map((item) => (
+                <Link href={getAnalysisPath(item.title, item.slug)} key={item.slug}>
+                  <span className="today-time">{formatVietnamTime(item.createdAt)}</span>
+                  <span className="today-source">{item.sourceType === "x" ? "X" : "Blog"}</span>
+                  <span className="today-title">
+                    <strong>{item.title}</strong>
+                    <small>{formatTokenCount(item.tokenCount)}</small>
+                  </span>
+                  <ArrowUpRight size={17} aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+            {todayTotalPages > 1 && (
+              <div className="today-pagination">
+                <button
+                  type="button"
+                  onClick={() => loadTodayPage(todayPage - 1)}
+                  disabled={todayLoading || todayPage === 1}
+                >
+                  Trước
+                </button>
+                <span>
+                  Trang {todayPage}/{todayTotalPages}
                 </span>
-                <ArrowUpRight size={17} aria-hidden="true" />
-              </Link>
-            ))}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => loadTodayPage(todayPage + 1)}
+                  disabled={todayLoading || todayPage === todayTotalPages}
+                >
+                  Sau
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <p className="today-empty">Chưa có bài nào hôm nay. Hãy là người mở bài đầu tiên.</p>
         )}

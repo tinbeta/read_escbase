@@ -178,18 +178,27 @@ export async function getAnalysisBySlug(slug: string): Promise<StoredAnalysis | 
   };
 }
 
-export async function getTodayAnalyses(limit = 10): Promise<TodayAnalyses> {
+export async function getTodayAnalysesPage(
+  page = 1,
+  pageSize = 10,
+): Promise<TodayAnalyses> {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return { count: 0, items: [] };
 
   const { start, end } = getVietnamDayBounds();
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const safePageSize =
+    Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 50) : 10;
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+
   const { data, error, count } = await supabase
     .from("analyses")
     .select("slug, title, source_type, created_at, token_count", { count: "exact" })
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(from, to);
 
   if (isMissingTokenCountColumn(error)) {
     const { data: fallbackData, error: fallbackError, count: fallbackCount } = await supabase
@@ -198,7 +207,7 @@ export async function getTodayAnalyses(limit = 10): Promise<TodayAnalyses> {
       .gte("created_at", start)
       .lt("created_at", end)
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .range(from, to);
 
     if (fallbackError || !fallbackData) {
       if (fallbackError) console.error("Supabase daily analyses query failed:", fallbackError.message);
@@ -232,4 +241,8 @@ export async function getTodayAnalyses(limit = 10): Promise<TodayAnalyses> {
       tokenCount: Number(item.token_count ?? 0) || null,
     })),
   };
+}
+
+export async function getTodayAnalyses(limit = 10): Promise<TodayAnalyses> {
+  return getTodayAnalysesPage(1, limit);
 }

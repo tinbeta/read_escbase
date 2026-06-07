@@ -1,14 +1,11 @@
 "use client";
 
 import {
-  AlertTriangle,
   ArrowUpRight,
   BookOpen,
-  Box,
   Check,
   Clock3,
   Copy,
-  Hash,
   Link2,
   MessageCircleMore,
   Quote,
@@ -17,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import type { AnalysisResult } from "@/lib/schemas";
 import { analysisToText } from "@/lib/format";
 import { getAnalysisPath } from "@/lib/share-url";
@@ -41,8 +39,37 @@ const sentimentLabels = {
   unavailable: "Không có dữ liệu",
 };
 
+function buildDeepDiveItems(result: AnalysisResult) {
+  const items: Array<{ title: string; body: string }> = [];
+
+  if (result.takeaway) {
+    items.push({ title: "Kết luận cần nhớ", body: result.takeaway });
+  }
+
+  for (const caveat of result.caveats.slice(0, 4)) {
+    items.push({ title: "Điểm cần thận trọng", body: caveat });
+  }
+
+  for (const source of result.linkedSources.slice(0, 3)) {
+    items.push({
+      title: `Link tác giả dẫn: ${source.title}`,
+      body: `${source.contribution} Hỗ trợ: ${source.supports}`,
+    });
+  }
+
+  for (const item of result.timeline.slice(0, 3)) {
+    items.push({
+      title: `Bối cảnh thời gian: ${item.time}`,
+      body: item.event,
+    });
+  }
+
+  return items;
+}
+
 export function AnalysisView({ result, sourceUrl, slug }: Props) {
   const [copied, setCopied] = useState(false);
+  const deepDiveItems = buildDeepDiveItems(result);
 
   async function copyArticle() {
     await navigator.clipboard.writeText(analysisToText(result, sourceUrl));
@@ -96,7 +123,8 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
       <section className="lead-card">
         <div className="section-icon"><BookOpen size={20} /></div>
         <div>
-          <p className="eyebrow">Tổng quan</p>
+          <p className="eyebrow">Tóm tắt nội dung</p>
+          <h2>Tóm tắt nội dung</h2>
           <p>{result.overview}</p>
         </div>
       </section>
@@ -105,8 +133,8 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
         <div className="section-heading">
           <Quote size={20} />
           <div>
-            <p className="eyebrow">Đọc phần cốt lõi</p>
-            <h2>Những ý chính</h2>
+            <p className="eyebrow">Ý chính rút ra</p>
+            <h2>Bài học chính</h2>
           </div>
         </div>
         <div className="point-list">
@@ -122,69 +150,12 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
         </div>
       </section>
 
-      {(result.factsAndFigures.length > 0 || result.peopleAndProducts.length > 0) && (
-        <section className="split-grid">
-          {result.factsAndFigures.length > 0 && (
-            <div className="article-section compact-section">
-              <div className="section-heading">
-                <Hash size={20} />
-                <h2>Dữ kiện & con số</h2>
-              </div>
-              <div className="fact-list">
-                {result.factsAndFigures.map((item, index) => (
-                  <div key={`${item.value}-${index}`}>
-                    <strong>{item.value}</strong>
-                    <p>{item.context}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {result.peopleAndProducts.length > 0 && (
-            <div className="article-section compact-section">
-              <div className="section-heading">
-                <Box size={20} />
-                <h2>Người & sản phẩm</h2>
-              </div>
-              <div className="entity-list">
-                {result.peopleAndProducts.map((item, index) => (
-                  <div key={`${item.name}-${index}`}>
-                    <strong>{item.name}</strong>
-                    <span>{item.role}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      {result.timeline.length > 0 && (
-        <section className="article-section">
-          <div className="section-heading">
-            <Clock3 size={20} />
-            <div>
-              <p className="eyebrow">Theo trình tự</p>
-              <h2>Dòng thời gian</h2>
-            </div>
-          </div>
-          <div className="timeline">
-            {result.timeline.map((item, index) => (
-              <div className="timeline-item" key={`${item.time}-${index}`}>
-                <span>{item.time}</span>
-                <p>{item.event}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       <section className="article-section community-section">
         <div className="section-heading">
           <MessageCircleMore size={21} />
           <div>
             <p className="eyebrow">Bình luận, không phải dữ kiện</p>
-            <h2>Cộng đồng nói gì?</h2>
+            <h2>Phản ứng cộng đồng</h2>
           </div>
           <span className="sentiment">{sentimentLabels[result.community.sentiment]}</span>
         </div>
@@ -216,49 +187,34 @@ export function AnalysisView({ result, sourceUrl, slug }: Props) {
         )}
       </section>
 
-      {result.linkedSources.length > 0 && (
-        <section className="article-section">
-          <div className="section-heading">
-            <Link2 size={20} />
-            <div>
-              <p className="eyebrow">Đã mở và đọc</p>
-              <h2>Liên kết từ tác giả</h2>
-            </div>
-          </div>
-          <div className="source-list">
-            {result.linkedSources.map((item, index) => (
-              <a href={item.url} target="_blank" rel="noreferrer" key={`${item.url}-${index}`}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.contribution}</p>
-                  <span>Hỗ trợ: {item.supports}</span>
-                </div>
-                <ArrowUpRight size={18} />
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {result.caveats.length > 0 && (
-        <section className="caveat-card">
-          <AlertTriangle size={20} />
+      <section className="article-section deep-dive-section">
+        <div className="section-heading">
+          <Link2 size={20} />
           <div>
-            <h2>Điều cần lưu ý</h2>
-            {result.caveats.map((item, index) => (
-              <p key={`${item}-${index}`}>• {item}</p>
+            <p className="eyebrow">Đọc kỹ hơn</p>
+            <h2>Phân tích chuyên sâu</h2>
+          </div>
+        </div>
+        {deepDiveItems.length > 0 ? (
+          <div className="deep-dive-list">
+            {deepDiveItems.map((item, index) => (
+              <div key={`${item.title}-${index}`}>
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
+              </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <p className="empty-copy">Không có thêm dữ liệu chuyên sâu từ nguồn này.</p>
+        )}
+      </section>
 
-      <footer className="takeaway-card">
-        <Check size={21} />
-        <div>
-          <p className="eyebrow">Kết luận ngắn</p>
-          <p>{result.takeaway}</p>
-        </div>
-      </footer>
+      <div className="article-return">
+        <Link href="/">
+          <ArrowUpRight size={17} />
+          Phân tích bài khác
+        </Link>
+      </div>
     </article>
   );
 }
