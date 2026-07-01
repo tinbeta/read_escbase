@@ -270,6 +270,11 @@ export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Prop
         )}
       </section>
 
+      <p className="ai-disclaimer">
+        Đây là bản tóm tắt và phân tích được tạo tự động bằng AI, có thể sai sót và không
+        đảm bảo chính xác 100%. Hãy xem nguồn gốc và tự kiểm chứng trước khi tin hoặc chia sẻ.
+      </p>
+
       <div className="article-bottom-actions">
         <button type="button" className="article-share-action" onClick={shareArticle}>
           <Share2 size={17} />

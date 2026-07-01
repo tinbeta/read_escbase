@@ -1,7 +1,9 @@
-import type { GatheredSource, LinkedPage } from "@/lib/types";
+import type { AnyGatheredSource, LinkedPage } from "@/lib/types";
 import { readXThread } from "@/lib/bird";
 import { isXStatusUrl, normalizeSourceUrl } from "@/lib/url";
+import { detectVideoPlatform } from "@/lib/video-platform";
 import { readWebPage } from "@/lib/web";
+import { gatherVideoSource } from "@/lib/video";
 
 async function readLinkedPages(urls: string[]): Promise<LinkedPage[]> {
   const settled = await Promise.allSettled(
@@ -14,8 +16,13 @@ async function readLinkedPages(urls: string[]): Promise<LinkedPage[]> {
   return settled.flatMap((item) => (item.status === "fulfilled" ? [item.value] : []));
 }
 
-export async function gatherSource(value: string): Promise<GatheredSource> {
+export async function gatherSource(value: string): Promise<AnyGatheredSource> {
   const sourceUrl = normalizeSourceUrl(value);
+
+  const videoPlatform = detectVideoPlatform(sourceUrl);
+  if (videoPlatform) {
+    return gatherVideoSource(sourceUrl, videoPlatform);
+  }
 
   if (isXStatusUrl(sourceUrl)) {
     const thread = await readXThread(sourceUrl);

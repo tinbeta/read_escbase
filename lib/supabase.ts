@@ -1,8 +1,8 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
-import type { AnalysisResult } from "@/lib/schemas";
 import type {
+  AnyAnalysisResult,
   SourceType,
   StoredAnalysis,
   TodayAnalyses,
@@ -79,7 +79,7 @@ export async function findRecentAnalysis(sourceUrl: string): Promise<StoredAnaly
       slug: fallbackData.slug,
       sourceUrl: fallbackData.source_url,
       sourceType: fallbackData.source_type as SourceType,
-      result: fallbackData.result as AnalysisResult,
+      result: fallbackData.result as AnyAnalysisResult,
       createdAt: fallbackData.created_at,
       tokenCount: null,
     };
@@ -90,7 +90,7 @@ export async function findRecentAnalysis(sourceUrl: string): Promise<StoredAnaly
     slug: data.slug,
     sourceUrl: data.source_url,
     sourceType: data.source_type as SourceType,
-    result: data.result as AnalysisResult,
+    result: data.result as AnyAnalysisResult,
     createdAt: data.created_at,
     tokenCount: Number(data.token_count ?? 0) || null,
   };
@@ -99,7 +99,7 @@ export async function findRecentAnalysis(sourceUrl: string): Promise<StoredAnaly
 export async function saveAnalysis(input: {
   sourceUrl: string;
   sourceType: SourceType;
-  result: AnalysisResult;
+  result: AnyAnalysisResult;
   tokenCount: number;
 }): Promise<string | null> {
   const supabase = getSupabaseAdminClient();
@@ -161,7 +161,7 @@ export async function getAnalysisBySlug(slug: string): Promise<StoredAnalysis | 
       slug: fallbackData.slug,
       sourceUrl: fallbackData.source_url,
       sourceType: fallbackData.source_type as SourceType,
-      result: fallbackData.result as AnalysisResult,
+      result: fallbackData.result as AnyAnalysisResult,
       createdAt: fallbackData.created_at,
       tokenCount: null,
     };
@@ -172,7 +172,7 @@ export async function getAnalysisBySlug(slug: string): Promise<StoredAnalysis | 
     slug: data.slug,
     sourceUrl: data.source_url,
     sourceType: data.source_type as SourceType,
-    result: data.result as AnalysisResult,
+    result: data.result as AnyAnalysisResult,
     createdAt: data.created_at,
     tokenCount: Number(data.token_count ?? 0) || null,
   };

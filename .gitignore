@@ -9,3 +9,7 @@ node_modules/
 .DS_Store
 coverage/
 venv/
+.venv/
+tmp/
+.cloudflared/credentials.json
+.cloudflared/cert.pem

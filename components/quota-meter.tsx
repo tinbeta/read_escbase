@@ -11,9 +11,10 @@ function compact(value: number): string {
   }).format(value);
 }
 
-function fullNumber(value: number): string {
-  return new Intl.NumberFormat("vi-VN").format(value);
-}
+const modelLabels: Record<string, string> = {
+  "gpt-5.4-mini": "GPT-5.4 mini",
+  "gpt-5.4": "GPT-5.4",
+};
 
 export function QuotaMeter({ quota }: { quota: QuotaStatus | null }) {
   const [now, setNow] = useState(() => Date.now());
@@ -32,7 +33,7 @@ export function QuotaMeter({ quota }: { quota: QuotaStatus | null }) {
     );
   }
 
-  const exhausted = quota.remaining <= 0;
+  const exhausted = quota.exhausted;
   const resetMs = Math.max(0, new Date(quota.resetAt).getTime() - now);
   const hours = Math.floor(resetMs / 3_600_000);
   const minutes = Math.floor((resetMs % 3_600_000) / 60_000);
@@ -45,34 +46,42 @@ export function QuotaMeter({ quota }: { quota: QuotaStatus | null }) {
           {exhausted ? <AlertCircle size={17} /> : <ShieldCheck size={17} />}
           {exhausted ? "Đã hết quota hôm nay" : "Free token guard"}
         </span>
-        <strong>{quota.model}</strong>
+        <strong>Reset sau {resetCountdown}</strong>
       </div>
-      <div className="quota-row">
-        <div className="quota-track" aria-label={`Đã dùng ${quota.percentUsed}% quota an toàn`}>
-          <span style={{ width: `${quota.percentUsed}%` }} />
-        </div>
-        <strong>{quota.percentUsed}%</strong>
+
+      <div className="quota-models">
+        {quota.models.map((model) => (
+          <div className="quota-model" key={model.model}>
+            <div className="quota-model-head">
+              <strong>{modelLabels[model.model] ?? model.model}</strong>
+              <span className={model.remaining <= 0 ? "quota-model-out" : ""}>
+                còn {compact(model.remaining)} / {compact(model.safetyLimit)} token
+              </span>
+            </div>
+            <div
+              className="quota-track"
+              aria-label={`${modelLabels[model.model] ?? model.model} đã dùng ${model.percentUsed}%`}
+            >
+              <span style={{ width: `${model.percentUsed}%` }} />
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="quota-stats">
-        <span>Đã dùng {fullNumber(quota.trackedUsed)} token</span>
-        <span>{exhausted ? "Còn 0 token an toàn" : `Còn ${compact(quota.remaining)} token an toàn`}</span>
-        <span>Trần app {compact(quota.safetyLimit)}/ngày</span>
-        <span>Reset sau {resetCountdown}</span>
-      </div>
+
+      {!quota.trackingAvailable && (
+        <p className="quota-warning">
+          Chưa nối Supabase: production sẽ khóa gọi AI để tránh vượt quota.
+        </p>
+      )}
       {exhausted && (
         <p className="quota-stop">
           Hệ thống đã tạm dừng AI để không phát sinh phí. Quota tự mở lại lúc 07:00 sáng
           theo giờ Việt Nam.
         </p>
       )}
-      {!quota.trackingAvailable && (
-        <p className="quota-warning">
-          Chưa nối Supabase: production sẽ khóa gọi AI để tránh vượt quota.
-        </p>
-      )}
       <p className="quota-scope">
-        Reset lúc 00:00 UTC, tương đương 07:00 sáng Việt Nam. Bộ đếm chỉ theo dõi ứng
-        dụng này.
+        Chung cho cả phân tích video và X/blog. Video thử GPT-5.4 trước, hết thì dùng
+        GPT-5.4 mini; X/blog luôn dùng mini. Reset 00:00 UTC (07:00 sáng Việt Nam).
       </p>
     </div>
   );

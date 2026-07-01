@@ -1,6 +1,9 @@
 import type { AnalysisResult } from "@/lib/schemas";
+import type { VideoAnalysisResult } from "@/lib/video-schemas";
 
-export type SourceType = "x" | "web";
+export type SourceType = "x" | "web" | "video";
+
+export type VideoPlatform = "youtube" | "tiktok" | "facebook";
 
 export type SourceItem = {
   author?: string;
@@ -18,7 +21,7 @@ export type LinkedPage = {
 };
 
 export type GatheredSource = {
-  sourceType: SourceType;
+  sourceType: "x" | "web";
   sourceUrl: string;
   title: string;
   authorContent: SourceItem[];
@@ -26,13 +29,37 @@ export type GatheredSource = {
   linkedPages: LinkedPage[];
 };
 
+export type VideoSegment = {
+  start: number;
+  end: number;
+  text: string;
+};
+
+export type GatheredVideoSource = {
+  sourceType: "video";
+  sourceUrl: string;
+  platform: VideoPlatform;
+  videoId: string | null;
+  title: string;
+  description: string;
+  uploader: string | null;
+  durationSeconds: number | null;
+  transcript: string;
+  transcriptSegments: VideoSegment[];
+  language: string | null;
+};
+
+export type AnyGatheredSource = GatheredSource | GatheredVideoSource;
+
+export type AnyAnalysisResult = AnalysisResult | VideoAnalysisResult;
+
 export type StoredAnalysis = {
   slug: string | null;
   sourceUrl: string;
   sourceType: SourceType;
   createdAt: string;
   tokenCount: number | null;
-  result: AnalysisResult;
+  result: AnyAnalysisResult;
 };
 
 export type AnalysisListItem = {
@@ -48,16 +75,20 @@ export type TodayAnalyses = {
   items: AnalysisListItem[];
 };
 
-export type QuotaStatus = {
-  model: string;
+export type ModelQuotaStatus = {
+  model: "gpt-5.4" | "gpt-5.4-mini";
   trackedUsed: number;
   reserved: number;
-  usageOffset: number;
-  freeDailyLimit: number;
   safetyLimit: number;
   remaining: number;
   percentUsed: number;
+};
+
+export type QuotaStatus = {
+  models: ModelQuotaStatus[];
+  totalRemaining: number;
+  exhausted: boolean;
   resetAt: string;
   trackingAvailable: boolean;
-  scope: "this_app";
+  scope: "this_app" | "shared";
 };

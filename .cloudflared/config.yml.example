@@ -1,0 +1,8 @@
+# Copy bằng scripts/cloudflare-tunnel-setup.sh — không sửa tay trừ khi biết TUNNEL_ID.
+tunnel: <TUNNEL_ID>
+credentials-file: /absolute/path/to/read_escbase/.cloudflared/credentials.json
+
+ingress:
+  - hostname: fast.escbase.xyz
+    service: http://127.0.0.1:3000
+  - service: http_status:404

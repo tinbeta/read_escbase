@@ -1,19 +1,28 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { AuthError, requireAllowedUser } from "@/lib/auth";
 import { analyzeSource } from "@/lib/analyze";
+import { analyzeVideoSource } from "@/lib/video-analyze";
 import { analyzeRequestSchema } from "@/lib/schemas";
 import { gatherSource } from "@/lib/source";
 import { findRecentAnalysis, saveAnalysis } from "@/lib/supabase";
 import { normalizeSourceUrl } from "@/lib/url";
 import {
   estimateReservation,
+  estimateVideoReservation,
   finalizeQuota,
+  finalizeVideoQuota,
   getQuotaStatus,
   reserveQuota,
+  reserveVideoQuota,
 } from "@/lib/quota";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Video analysis (download + transcribe + web-search fact-check) is much
+// slower than text analysis. Local `next dev`/`next start` are not bound by
+// this value; on Vercel, functions longer than the plan's limit still need
+// Fluid Compute / a higher plan tier for the video path to fully complete.
+export const maxDuration = 300;
 
 const attempts = new Map<string, number[]>();
 
@@ -34,6 +43,8 @@ function isRateLimited(request: NextRequest): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAllowedUser(request);
+
     const body: unknown = await request.json();
     const parsed = analyzeRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -57,6 +68,40 @@ export async function POST(request: NextRequest) {
     }
 
     const source = await gatherSource(normalizedUrl);
+
+    if (source.sourceType === "video") {
+      const videoReservation = await reserveVideoQuota(estimateVideoReservation(source.transcript.length));
+      let videoTokens = 0;
+
+      try {
+        const analyzed = await analyzeVideoSource(source, videoReservation.model);
+        videoTokens = analyzed.totalTokens;
+        await finalizeVideoQuota(videoReservation, videoTokens, true);
+
+        const slug = await saveAnalysis({
+          sourceUrl: source.sourceUrl,
+          sourceType: "video",
+          result: analyzed.result,
+          tokenCount: videoTokens,
+        });
+
+        return NextResponse.json({
+          slug,
+          sourceUrl: source.sourceUrl,
+          sourceType: "video",
+          createdAt: new Date().toISOString(),
+          tokenCount: videoTokens,
+          result: analyzed.result,
+          cached: false,
+          requestTokens: videoTokens,
+          quota: await getQuotaStatus(),
+        });
+      } catch (error) {
+        await finalizeVideoQuota(videoReservation, videoTokens, false);
+        throw error;
+      }
+    }
+
     const reservation = await reserveQuota(estimateReservation(source));
     let totalTokens = 0;
 
@@ -88,6 +133,9 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : "Không thể phân tích đường dẫn.";
     console.error("Analyze request failed:", message);
     let quota = null;

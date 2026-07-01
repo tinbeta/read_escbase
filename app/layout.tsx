@@ -19,15 +19,15 @@ const serif = Newsreader({
 export const metadata: Metadata = {
   metadataBase: new URL("https://read.escbase.xyz"),
   title: {
-    default: "Escbase Read",
-    template: "%s | Escbase Read",
+    default: "Fast Escbase",
+    template: "%s | Fast Escbase",
   },
-  description: "Đọc nhanh X hoặc Blog bằng AI.",
+  description: "Đọc nhanh video ngắn TikTok, Facebook Reel, YouTube Short bằng AI: tóm tắt và kiểm chứng đúng sai.",
   openGraph: {
-    title: "Escbase Read",
-    description: "Đọc nhanh X hoặc Blog bằng AI.",
+    title: "Fast Escbase",
+    description: "Đọc nhanh video ngắn TikTok, Facebook Reel, YouTube Short bằng AI: tóm tắt và kiểm chứng đúng sai.",
     url: "https://read.escbase.xyz",
-    siteName: "Escbase Read",
+    siteName: "Fast Escbase",
     locale: "vi_VN",
     type: "website",
     images: [
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
         url: "/escbase-read-og.png",
         width: 1200,
         height: 630,
-        alt: "Escbase Read",
+        alt: "Fast Escbase",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Escbase Read",
-    description: "Đọc nhanh X hoặc Blog bằng AI.",
+    title: "Fast Escbase",
+    description: "Đọc nhanh video ngắn TikTok, Facebook Reel, YouTube Short bằng AI: tóm tắt và kiểm chứng đúng sai.",
     images: ["/escbase-read-og.png"],
   },
 };

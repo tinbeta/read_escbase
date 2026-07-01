@@ -1,0 +1,7 @@
+tunnel: 22c64ef0-952d-42f8-8713-cee9c57e2c85
+credentials-file: /Users/tinanpha/Desktop/read_escbase/.cloudflared/credentials.json
+
+ingress:
+  - hostname: fast.escbase.xyz
+    service: http://127.0.0.1:3000
+  - service: http_status:404

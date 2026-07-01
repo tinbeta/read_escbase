@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { AnalysisView } from "@/components/analysis-view";
+import { VideoAnalysisView } from "@/components/video-analysis-view";
 import { getAnalysisPath, extractAnalysisId } from "@/lib/share-url";
 import { getAnalysisBySlug } from "@/lib/supabase";
+import type { AnalysisResult } from "@/lib/schemas";
+import type { VideoAnalysisResult } from "@/lib/video-schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +32,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: analysis.result.title,
       url: canonicalUrl,
-      siteName: "Escbase Read",
+      siteName: "Fast Escbase",
       locale: "vi_VN",
       type: "article",
       images: [
@@ -60,11 +63,19 @@ export default async function SharedAnalysisPage({ params }: PageProps) {
   return (
     <main>
       <div className="shared-page">
-        <AnalysisView
-          result={analysis.result}
-          sourceUrl={analysis.sourceUrl}
-          slug={analysis.slug}
-        />
+        {analysis.sourceType === "video" ? (
+          <VideoAnalysisView
+            result={analysis.result as VideoAnalysisResult}
+            sourceUrl={analysis.sourceUrl}
+            slug={analysis.slug}
+          />
+        ) : (
+          <AnalysisView
+            result={analysis.result as AnalysisResult}
+            sourceUrl={analysis.sourceUrl}
+            slug={analysis.slug}
+          />
+        )}
       </div>
     </main>
   );

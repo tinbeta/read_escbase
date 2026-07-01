@@ -5,6 +5,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { analysisResultSchema, type AnalysisResult } from "@/lib/schemas";
 import type { GatheredSource } from "@/lib/types";
 import { getFreeModel, getMaxOutputTokens } from "@/lib/quota";
+import { hasTooMuchNonVietnameseCjk } from "@/lib/language";
 
 const SYSTEM_PROMPT = `Bạn là biên tập viên phân tích công nghệ bằng tiếng Việt.
 
@@ -42,8 +43,6 @@ const VIETNAMESE_OUTPUT_RULE = `Yêu cầu bắt buộc về ngôn ngữ:
 - Dịch/diễn giải mọi nội dung tiếng Trung, tiếng Anh hoặc ngôn ngữ khác sang tiếng Việt.
 - Không được giữ câu tiếng Trung/Nhật/Hàn trong kết quả, ngoại trừ tên riêng, username, URL hoặc tên sản phẩm.`;
 
-const CJK_PATTERN = /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/g;
-
 function compactSource(source: GatheredSource) {
   return {
     source_type: source.sourceType,
@@ -57,21 +56,6 @@ function compactSource(source: GatheredSource) {
       text: page.text.slice(0, 14_000),
     })),
   };
-}
-
-function collectText(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (!value || typeof value !== "object") return "";
-  if (Array.isArray(value)) return value.map(collectText).join("\n");
-  return Object.values(value).map(collectText).join("\n");
-}
-
-function hasTooMuchNonVietnameseCjk(result: AnalysisResult): boolean {
-  const text = collectText(result)
-    .replace(/https?:\/\/\S+/g, "")
-    .replace(/@\S+/g, "");
-  const cjkCount = text.match(CJK_PATTERN)?.length ?? 0;
-  return cjkCount > 80;
 }
 
 async function parseAnalysis(
