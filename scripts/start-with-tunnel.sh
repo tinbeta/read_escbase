@@ -7,11 +7,14 @@ PORT="${PORT:-3000}"
 
 cd "$ROOT_DIR"
 
-if [[ ! -f "$CF_CONFIG" ]]; then
-  echo "Chưa có tunnel config. Chạy trước:"
+if [[ ! -f "$ROOT_DIR/.cloudflared/credentials.json" ]]; then
+  echo "Chưa có tunnel credentials. Chạy trước:"
   echo "  ./scripts/cloudflare-tunnel-setup.sh"
+  echo "Hoặc copy thư mục .cloudflared/ từ máy cũ rồi chạy ./scripts/setup-new-mac.sh"
   exit 1
 fi
+
+"$ROOT_DIR/scripts/ensure-cloudflared-config.sh"
 
 if ! command -v cloudflared >/dev/null 2>&1; then
   echo "Chưa có cloudflared. Cài bằng: brew install cloudflared"

@@ -48,6 +48,14 @@ lib/
   supabase-browser.ts      Supabase client phía trình duyệt (đăng nhập Google)
 scripts/
   transcribe.py            CLI gọi faster-whisper, Node spawn để lấy transcript
+  setup-new-mac.sh         Setup một lần sau khi copy/nén project sang Mac mới
+  start-with-tunnel.sh     Build + next start + Cloudflare Tunnel
+  ensure-cloudflared-config.sh  Ghi lại config tunnel theo đường dẫn máy hiện tại
+  cloudflare-tunnel-setup.sh    Tạo tunnel mới (chỉ khi chưa có credentials)
+  sleep.sh                 Bật/tắt pmset disablesleep
+.cloudflared/
+  credentials.json         Tunnel secret (copy trong zip, gitignore)
+  config.yml               Tự sinh lại bởi ensure-cloudflared-config.sh
 supabase/migrations/
   001_create_analyses.sql  Bảng lưu bài phân tích/cache/share
   002_create_ai_daily_usage.sql  Bảng quota và RPC reserve/finalize token
@@ -67,6 +75,27 @@ npm install
 cp .env.example .env
 npm run dev
 ```
+
+### Copy sang Mac mới (một lệnh setup)
+
+Nén **cả thư mục dự án** (bao gồm `.env`, `.cloudflared/`, `.venv/` nếu muốn
+bỏ qua bước cài whisper) rồi giải nén trên máy mới:
+
+```bash
+cd /path/to/read_escbase
+./scripts/setup-new-mac.sh
+./scripts/start-with-tunnel.sh
+```
+
+`setup-new-mac.sh` tự cài (qua Homebrew) `node`, `yt-dlp`, `ffmpeg`,
+`cloudflared`, chạy `npm install`, tạo `.venv` + `faster-whisper`, và ghi lại
+`.cloudflared/config.yml` đúng đường dẫn máy mới. Thư mục `.cloudflared/`
+(có `credentials.json`) nên nằm trong bản zip — file này **gitignore**, không
+push lên Git public.
+
+Giữ Mac không ngủ khi chạy tunnel lâu: `./scripts/sleep.sh on`
+
+Domain tunnel: https://fast.escbase.xyz
 
 ### Cài công cụ cho phân tích video (yt-dlp + ffmpeg + faster-whisper)
 

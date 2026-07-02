@@ -57,15 +57,7 @@ fi
 cp "$CRED_SRC" "$CRED_DST"
 
 echo "==> Bước 3/4: Ghi tunnel config"
-cat > "$CF_DIR/config.yml" <<EOF
-tunnel: ${TUNNEL_ID}
-credentials-file: ${CRED_DST}
-
-ingress:
-  - hostname: ${HOSTNAME}
-    service: http://127.0.0.1:3000
-  - service: http_status:404
-EOF
+"$ROOT_DIR/scripts/ensure-cloudflared-config.sh"
 
 echo "==> Bước 4/4: Cấu hình DNS trên Cloudflare"
 echo "    ${HOSTNAME} → ${CNAME_TARGET}"

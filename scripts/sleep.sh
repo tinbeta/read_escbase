@@ -6,11 +6,11 @@ usage() {
 Giữ máy Mac không ngủ (pmset disablesleep) — hữu ích khi chạy tunnel/server lâu.
 
 Usage:
-  ./scripts/mac-sleep.sh           # xem trạng thái hiện tại
-  ./scripts/mac-sleep.sh status
-  ./scripts/mac-sleep.sh on        # bật: máy không ngủ
-  ./scripts/mac-sleep.sh off       # tắt: trở lại bình thường
-  ./scripts/mac-sleep.sh toggle    # đảo trạng thái
+  ./scripts/sleep.sh           # xem trạng thái hiện tại
+  ./scripts/sleep.sh status
+  ./scripts/sleep.sh on        # bật: máy không ngủ
+  ./scripts/sleep.sh off       # tắt: trở lại bình thường
+  ./scripts/sleep.sh toggle    # đảo trạng thái
 
 Ghi chú:
   - Cần sudo cho on/off/toggle.
