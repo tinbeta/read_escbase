@@ -68,7 +68,7 @@ export function analysisToText(result: AnalysisResult, sourceUrl: string): strin
 
 const overallVerdictLabels = {
   mostly_accurate: "Đa số chính xác",
-  mixed: "Đúng sai lẫn nhau",
+  mixed: "Có đúng có sai",
   mostly_inaccurate: "Đa số không chính xác",
   unverifiable: "Không thể kiểm chứng",
   opinion_no_factual_claims: "Chỉ là ý kiến, không có tuyên bố cần kiểm chứng",

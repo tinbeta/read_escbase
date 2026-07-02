@@ -59,6 +59,10 @@ Nhiệm vụ 2 — Phân tích tính đúng sai (mục "factCheck"):
 - factCheck.overallVerdict tổng hợp: "mostly_accurate", "mixed",
   "mostly_inaccurate", "unverifiable", hoặc "opinion_no_factual_claims" nếu
   video chỉ có ý kiến/giải trí, không có tuyên bố sự kiện nào cần kiểm chứng.
+- Nếu video thuần giải trí, kể chuyện đời thường, chia sẻ cảm nhận/quan điểm cá
+  nhân: ĐỪNG cố nặn ra tuyên bố để kiểm chứng. Trả claims rỗng, KHÔNG gọi
+  web_search, đặt overallVerdict = "opinion_no_factual_claims" và viết
+  factCheck.summary 1-2 câu giải thích ngắn vì sao không có gì cần kiểm chứng.
 - factCheck.caveats: tối đa 1-2 câu, chỉ nêu giới hạn thật sự quan trọng (ví dụ:
   video quá ngắn nên ít dữ kiện cụ thể, hoặc phần lớn nội dung là quan điểm cá
   nhân). Không nhắc tới việc chuyển giọng nói thành văn bản có thể sai, không
