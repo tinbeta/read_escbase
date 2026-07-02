@@ -202,29 +202,29 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
         ) : (
           <>
             <div className={`video-verdict-banner verdict-${result.factCheck.overallVerdict}`}>
-              <span className="video-verdict-icon">
-                <OverallVerdictIcon size={19} />
-              </span>
-              <div>
+              <div className="video-verdict-head">
+                <span className="video-verdict-icon">
+                  <OverallVerdictIcon size={19} />
+                </span>
                 <strong>{overallVerdictLabels[result.factCheck.overallVerdict]}</strong>
-                {result.factCheck.claims.length > 0 ? (
-                  <ul className="video-verdict-points">
-                    {result.factCheck.claims.map((claim, index) => {
-                      const mark = claimQuickMarkMap[claim.verdict];
-                      return (
-                        <li key={`${claim.claim}-${index}`}>
-                          <span className={`verdict-point-icon tone-${mark.tone}`}>
-                            <mark.Icon size={14} strokeWidth={3} />
-                          </span>
-                          <span>{claim.claim}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p>{result.factCheck.summary}</p>
-                )}
               </div>
+              {result.factCheck.claims.length > 0 ? (
+                <ul className="video-verdict-points">
+                  {result.factCheck.claims.map((claim, index) => {
+                    const mark = claimQuickMarkMap[claim.verdict];
+                    return (
+                      <li key={`${claim.claim}-${index}`}>
+                        <span className={`verdict-point-icon tone-${mark.tone}`}>
+                          <mark.Icon size={14} strokeWidth={3} />
+                        </span>
+                        <span>{claim.claim}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p>{result.factCheck.summary}</p>
+              )}
             </div>
 
             {result.factCheck.claims.length > 0 ? (
