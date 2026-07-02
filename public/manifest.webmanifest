@@ -1,0 +1,33 @@
+{
+  "name": "Fast Escbase",
+  "short_name": "Fast Escbase",
+  "description": "Đọc nhanh video ngắn TikTok, Facebook Reel, YouTube Short bằng AI.",
+  "id": "/?pwa=fast-escbase",
+  "start_url": "/?pwa=fast-escbase",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "browser"],
+  "background_color": "#eee8d7",
+  "theme_color": "#eee8d7",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
