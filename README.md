@@ -76,10 +76,28 @@ cp .env.example .env
 npm run dev
 ```
 
-### Copy sang Mac mới (một lệnh setup)
+### Chạy trên Mac local khác
 
-Nén **cả thư mục dự án** (bao gồm `.env`, `.cloudflared/`, `.venv/` nếu muốn
-bỏ qua bước cài whisper) rồi giải nén trên máy mới:
+Video analysis chạy tốt nhất theo mô hình self-host/local: máy chạy app cần có
+Node 22, `yt-dlp`, `ffmpeg`, Python venv có `faster-whisper`, `.env` thật và
+tunnel credentials. Máy sửa code không cần giữ đủ các secret đó.
+
+Nếu sửa code ở máy này nhưng chạy app ở Mac khác, workflow khuyến nghị là:
+
+```bash
+# Trên máy sửa code
+git add <cac-file-source-da-sua>
+git commit -m "..."
+git push
+
+# Trên máy chạy local/tunnel
+cd /path/to/read_escbase
+git pull
+npm install       # chỉ cần chạy khi package.json/package-lock.json đổi
+./scripts/start-with-tunnel.sh
+```
+
+Lần đầu setup máy chạy local:
 
 ```bash
 cd /path/to/read_escbase
@@ -89,9 +107,37 @@ cd /path/to/read_escbase
 
 `setup-new-mac.sh` tự cài (qua Homebrew) `node`, `yt-dlp`, `ffmpeg`,
 `cloudflared`, chạy `npm install`, tạo `.venv` + `faster-whisper`, và ghi lại
-`.cloudflared/config.yml` đúng đường dẫn máy mới. Thư mục `.cloudflared/`
-(có `credentials.json`) nên nằm trong bản zip — file này **gitignore**, không
-push lên Git public.
+`.cloudflared/config.yml` đúng đường dẫn máy chạy. Thư mục `.cloudflared/`
+có `credentials.json` nên chỉ nằm trên máy chạy hoặc trong bản zip riêng tư;
+`credentials.json` đã **gitignore**, không push lên Git public.
+
+Nếu không dùng Git mà copy/nén project sang máy chạy, nén **cả thư mục dự án**
+bao gồm `.env` và `.cloudflared/credentials.json`. Có thể kèm `.venv/` để bỏ
+qua bước cài whisper, nhưng thường để `setup-new-mac.sh` tạo lại sẽ sạch hơn.
+
+### Các script vận hành local
+
+| Script | Khi nào dùng | Làm gì |
+|--------|--------------|--------|
+| `scripts/setup-new-mac.sh` | Chạy một lần trên Mac mới hoặc sau khi copy project sang máy chạy | Cài Homebrew tool cần thiết, chạy `npm install`, tạo `.venv`, cài `faster-whisper`, kiểm tra `.env`, ghi lại tunnel config, build thử |
+| `scripts/start-with-tunnel.sh` | Mỗi lần muốn chạy app public qua domain | Build production, chạy `next start`, rồi mở Cloudflare Tunnel tới `https://fast.escbase.xyz`; `Ctrl+C` sẽ dừng cả server và tunnel |
+| `scripts/ensure-cloudflared-config.sh` | Khi đổi máy, đổi thư mục project, đổi port, hoặc vừa copy credentials sang | Tạo lại `.cloudflared/config.yml` với absolute path đúng của máy hiện tại |
+| `scripts/cloudflare-tunnel-setup.sh` | Chỉ dùng khi máy chạy chưa có `.cloudflared/credentials.json` | Đăng nhập Cloudflare, tạo/tìm tunnel `fast-escbase`, copy credentials về project và cấu hình DNS |
+| `scripts/sleep.sh on/off` | Khi để Mac chạy tunnel lâu | Bật/tắt chế độ chống sleep |
+| `scripts/transcribe.py` | Không gọi tay trong vận hành bình thường | Bridge nội bộ để Node gọi `faster-whisper` |
+
+Có thể đổi port tạm thời khi chạy:
+
+```bash
+PORT=3001 ./scripts/start-with-tunnel.sh
+```
+
+`config.yml` trong `.cloudflared/` là file tự sinh theo máy chạy. Không sửa tay
+trừ khi đang debug tunnel; nếu sai path thì chạy lại:
+
+```bash
+./scripts/ensure-cloudflared-config.sh
+```
 
 Giữ Mac không ngủ khi chạy tunnel lâu: `./scripts/sleep.sh on`
 
@@ -125,12 +171,20 @@ OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_FREE_DAILY_LIMIT=2500000
 OPENAI_FREE_SAFE_LIMIT=2350000
+OPENAI_FULL_FREE_DAILY_LIMIT=250000
+OPENAI_FULL_FREE_SAFE_LIMIT=230000
 OPENAI_DAILY_USAGE_OFFSET=0
 OPENAI_DAILY_USAGE_OFFSET_DATE=2026-06-06
 ```
 
-Ứng dụng khóa model ở `gpt-5.4-mini`, giới hạn output và dừng tại ngưỡng an toàn
-`2.350.000/2.500.000` token mỗi ngày.
+Quota token là một hệ thống chung theo từng model:
+
+- X/blog luôn dùng `OPENAI_MODEL`, hiện chỉ cho phép `gpt-5.4-mini`, và dừng ở
+  ngưỡng an toàn `OPENAI_FREE_SAFE_LIMIT`.
+- Video thử `gpt-5.4` trước theo bucket `OPENAI_FULL_*`; nếu bucket này không
+  đủ quota thì tự fallback sang `gpt-5.4-mini`.
+- Cả hai bucket đều được lưu trong `ai_daily_usage` theo cặp `(usage_day, model)`
+  sau khi chạy migration 005.
 
 `OPENAI_DAILY_USAGE_OFFSET` dùng khi key đã tiêu token trước lúc bật app/quota
 guard. `OPENAI_DAILY_USAGE_OFFSET_DATE` là ngày UTC của offset; offset tự hết
@@ -278,7 +332,7 @@ Phân tích video dùng Agents SDK (`@openai/agents`) với công cụ `web_sear
 kiểm chứng từng tuyên bố bằng nguồn uy tín. Khi phân tích video, hệ thống thử
 `gpt-5.4` trước, hết quota an toàn trong ngày thì tự chuyển sang
 `gpt-5.4-mini`; hết cả hai thì báo lỗi. Cả hai model dùng chung bảng
-`ai_daily_usage`, mỗi model một dòng riêng nên không cần thêm migration.
+`ai_daily_usage`, mỗi model một dòng riêng sau khi chạy migration 005.
 
 `VIDEO_MAX_DURATION_SECONDS` (mặc định 1200 = 20 phút) chặn video quá dài để
 tránh tải/transcribe/phân tích quá lâu trong một request. `WHISPER_MODEL_SIZE`
