@@ -118,12 +118,12 @@ export function estimateReservation(source: GatheredSource): number {
 
 export function estimateVideoReservation(transcriptCharacters: number): number {
   const estimatedInput = Math.ceil(transcriptCharacters / 1.7) + 4_000;
-  // web_search tool calls add extra request/response overhead per turn on top
-  // of the plain text completion, so this intentionally overestimates.
-  const webSearchOverhead = 25_000;
+  // local_web_search returns source snippets/page text to the agent, so video
+  // fact-checking still needs a wider token reservation than plain summaries.
+  const searchToolOverhead = 25_000;
   return Math.min(
     150_000,
-    Math.max(20_000, estimatedInput + MAX_VIDEO_OUTPUT_TOKENS + webSearchOverhead),
+    Math.max(20_000, estimatedInput + MAX_VIDEO_OUTPUT_TOKENS + searchToolOverhead),
   );
 }
 

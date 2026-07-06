@@ -1,0 +1,31 @@
+# Local SearXNG instance for Escbase Read web fact-checking.
+# Based on the official SearXNG container compose template:
+# https://docs.searxng.org/admin/installation-docker.html
+
+name: escbase-read-searxng
+
+services:
+  core:
+    container_name: escbase-read-searxng-core
+    image: docker.io/searxng/searxng:${SEARXNG_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${SEARXNG_HOST:-127.0.0.1}:${SEARXNG_PORT:-8080}:8080"
+    env_file: ./.env
+    volumes:
+      - ./core-config/:/etc/searxng/:rw
+      - core-data:/var/cache/searxng/
+    depends_on:
+      - valkey
+
+  valkey:
+    container_name: escbase-read-searxng-valkey
+    image: docker.io/valkey/valkey:9-alpine
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - valkey-data:/data/
+
+volumes:
+  core-data:
+  valkey-data:

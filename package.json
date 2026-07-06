@@ -11,6 +11,10 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "search:start": "./scripts/searxng.sh start",
+    "search:stop": "./scripts/searxng.sh stop",
+    "search:test": "./scripts/searxng.sh test",
+    "search:logs": "./scripts/searxng.sh logs",
     "test": "vitest run"
   },
   "dependencies": {

@@ -1,10 +1,11 @@
 import "server-only";
 
-import { Agent, Runner, webSearchTool } from "@openai/agents";
+import { Agent, Runner } from "@openai/agents";
 import { videoModelOutputSchema, type VideoAnalysisResult } from "@/lib/video-schemas";
 import type { GatheredVideoSource } from "@/lib/types";
 import { getMaxVideoOutputTokens, type VideoModelId } from "@/lib/quota";
 import { hasTooMuchNonVietnameseCjk } from "@/lib/language";
+import { localWebSearchTool } from "@/lib/local-web-search-tool";
 
 const MAX_TRANSCRIPT_CHARS = 20_000;
 const MAX_DESCRIPTION_CHARS = 2_000;
@@ -39,8 +40,8 @@ Nhiệm vụ 1 — Tóm tắt nội dung (mục "summary"):
 Nhiệm vụ 2 — Phân tích tính đúng sai (mục "factCheck"):
 - Xác định các tuyên bố có thể kiểm chứng (số liệu, sự kiện, khoa học, y tế,
   lịch sử, chính trị, thời sự...) khác với ý kiến/cảm nhận cá nhân.
-- Với mỗi tuyên bố kiểm chứng được, BẮT BUỘC dùng công cụ web_search để tìm
-  nguồn độc lập, ưu tiên: cơ quan chính thống/nhà nước, tổ chức khoa học/y tế
+- Với mỗi tuyên bố kiểm chứng được, BẮT BUỘC dùng công cụ local_web_search để tìm
+  nguồn độc lập bằng search provider local của app, ưu tiên: cơ quan chính thống/nhà nước, tổ chức khoa học/y tế
   uy tín (WHO, các đại học, tạp chí khoa học), báo chí lớn có quy trình biên
   tập rõ ràng, hoặc tổ chức kiểm chứng tin giả uy tín (Reuters Fact Check,
   AFP Fact Check, Snopes...). Tránh dùng blog cá nhân, diễn đàn, mạng xã hội
@@ -54,14 +55,16 @@ Nhiệm vụ 2 — Phân tích tính đúng sai (mục "factCheck"):
   "needs_context" (cần thêm bối cảnh để đánh giá đúng/sai),
   "unverifiable" (không tìm được nguồn đáng tin để xác nhận),
   "opinion" (ý kiến/cảm nhận, không phải tuyên bố sự kiện).
-- claims[].sources CHỈ được chứa URL thật lấy từ kết quả web_search. Không tự
+- claims[].sources CHỈ được chứa URL thật lấy từ kết quả local_web_search. Không tự
   bịa URL, tên nguồn hay trích dẫn không có trong kết quả tìm kiếm.
+- Nếu local_web_search không trả được nguồn đủ tin cậy cho một tuyên bố, hãy
+  đặt verdict="unverifiable" hoặc "needs_context" thay vì đoán.
 - factCheck.overallVerdict tổng hợp: "mostly_accurate", "mixed",
   "mostly_inaccurate", "unverifiable", hoặc "opinion_no_factual_claims" nếu
   video chỉ có ý kiến/giải trí, không có tuyên bố sự kiện nào cần kiểm chứng.
 - Nếu video thuần giải trí, kể chuyện đời thường, chia sẻ cảm nhận/quan điểm cá
   nhân: ĐỪNG cố nặn ra tuyên bố để kiểm chứng. Trả claims rỗng, KHÔNG gọi
-  web_search, đặt overallVerdict = "opinion_no_factual_claims" và viết
+  local_web_search, đặt overallVerdict = "opinion_no_factual_claims" và viết
   factCheck.summary 1-2 câu giải thích ngắn vì sao không có gì cần kiểm chứng.
 - factCheck.caveats: tối đa 1-2 câu, chỉ nêu giới hạn thật sự quan trọng (ví dụ:
   video quá ngắn nên ít dữ kiện cụ thể, hoặc phần lớn nội dung là quan điểm cá
@@ -118,7 +121,7 @@ async function runVideoAgent(
       store: false,
     },
     outputType: videoModelOutputSchema,
-    tools: [webSearchTool({ searchContextSize: "low", externalWebAccess: true })],
+    tools: [localWebSearchTool()],
   });
 
   const runner = new Runner({

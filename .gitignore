@@ -8,8 +8,10 @@ node_modules/
 *.log
 .DS_Store
 coverage/
+.cache/
 venv/
 .venv/
 tmp/
+searxng/.env
 .cloudflared/credentials.json
 .cloudflared/cert.pem

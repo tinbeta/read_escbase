@@ -12,7 +12,9 @@ Với link video YouTube/TikTok/Facebook Reel, app dùng
 [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) để tải âm thanh và
 [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper) (qua một script Python
 riêng) để transcribe, sau đó dùng [`@openai/agents`](https://www.npmjs.com/package/@openai/agents)
-với công cụ `web_search` để kiểm chứng các tuyên bố trong video bằng nguồn uy tín.
+với công cụ local `local_web_search` để kiểm chứng các tuyên bố trong video bằng
+nguồn uy tín. Tool này do app tự chạy qua SearxNG/Brave/DuckDuckGo và không dùng
+OpenAI hosted `web_search`.
 
 ## Cấu trúc dự án
 
@@ -36,7 +38,9 @@ lib/
   source.ts                Chọn nguồn video/X/web, đọc link liên quan
   video-platform.ts        Nhận diện link YouTube/TikTok/Facebook Reel (client-safe)
   video.ts                 Tải audio bằng yt-dlp, transcribe bằng faster-whisper
-  video-analyze.ts         Agent + web_search để tóm tắt & kiểm chứng video
+  video-analyze.ts         Agent + local_web_search để tóm tắt & kiểm chứng video
+  local-web-search.ts      Search provider local, đọc trang, rank nguồn, cache
+  local-web-search-tool.ts Function tool cho @openai/agents
   video-schemas.ts         Zod schema cho kết quả phân tích video
   language.ts              Helper kiểm tra output có lẫn ngôn ngữ khác tiếng Việt
   web.ts                   Đọc trang blog/web thường
@@ -162,6 +166,47 @@ Nếu venv/python binary không nằm ở đường dẫn mặc định `.venv/b
 (tính từ project root), đặt `WHISPER_PYTHON_PATH` trong `.env` — có thể là
 đường dẫn tương đối (ví dụ `.venv/bin/python3`) hoặc tuyệt đối.
 
+### Local web search cho kiểm chứng video
+
+Video fact-check không dùng OpenAI hosted `web_search`. App tự chạy tool
+`local_web_search`: lấy kết quả từ search provider, đọc HTML bằng `lib/web.ts`,
+rank nguồn uy tín, cắt đoạn text ngắn rồi đưa vào agent để kiểm chứng.
+
+Mặc định `WEB_SEARCH_PROVIDER=auto`:
+
+- Nếu có `SEARXNG_URL`, dùng SearxNG self-host/local.
+- Nếu có `BRAVE_SEARCH_API_KEY`, dùng Brave Search API.
+- Nếu không có hai cấu hình trên, fallback DuckDuckGo HTML.
+
+Khuyến nghị local ổn định nhất là chạy SearxNG riêng rồi trỏ app vào. Repo đã
+có cấu hình Docker Compose trong `searxng/` và script quản lý:
+
+```bash
+npm run search:start   # bật SearXNG local ở 127.0.0.1:8080 và cập nhật .env app
+npm run search:test    # kiểm tra /search?...&format=json
+npm run search:logs    # xem log SearXNG
+npm run search:stop    # dừng SearXNG
+```
+
+Máy chạy cần có Docker Desktop/Compose. Script sẽ tạo `searxng/.env` từ
+`searxng/.env.example`, sinh `SEARXNG_SECRET`, rồi thêm/cập nhật các dòng này
+trong `.env` của app:
+
+```dotenv
+WEB_SEARCH_PROVIDER=auto
+SEARXNG_URL=http://127.0.0.1:8080
+WEB_SEARCH_MAX_RESULTS=5
+WEB_SEARCH_CACHE_TTL_HOURS=24
+WEB_SEARCH_CACHE_DIR=.cache/web-search
+```
+
+Nếu `npm run dev` đang chạy trước khi bật SearXNG, restart Next.js để server
+đọc lại `.env`.
+
+Cache search nằm trong `.cache/web-search` và đã được gitignore. Link nguồn trả
+về từ search provider vẫn đi qua lớp đọc trang an toàn của app, bao gồm chặn URL
+nội bộ/localhost để tránh fetch nhầm tài nguyên private.
+
 ## Biến môi trường
 
 ### OpenAI
@@ -189,6 +234,10 @@ Quota token là một hệ thống chung theo từng model:
 `OPENAI_DAILY_USAGE_OFFSET` dùng khi key đã tiêu token trước lúc bật app/quota
 guard. `OPENAI_DAILY_USAGE_OFFSET_DATE` là ngày UTC của offset; offset tự hết
 hiệu lực vào ngày UTC tiếp theo.
+
+Web search trong video fact-check là tool local, nên không tạo dòng phí OpenAI
+hosted `web_search` trong usage. OpenAI vẫn tính token model cho phần agent đọc
+kết quả search và viết phân tích.
 
 ### X / Bird
 
@@ -328,8 +377,9 @@ hai free tier thật của OpenAI (cấu hình ở phần OpenAI phía trên):
 - `gpt-5.4` (`OPENAI_FULL_*`, mặc định 250k/ngày): video thử model này trước
   để có chất lượng kiểm chứng cao hơn.
 
-Phân tích video dùng Agents SDK (`@openai/agents`) với công cụ `web_search` để
-kiểm chứng từng tuyên bố bằng nguồn uy tín. Khi phân tích video, hệ thống thử
+Phân tích video dùng Agents SDK (`@openai/agents`) với công cụ `local_web_search`
+để kiểm chứng từng tuyên bố bằng nguồn uy tín mà không gọi OpenAI hosted
+web search. Khi phân tích video, hệ thống thử
 `gpt-5.4` trước, hết quota an toàn trong ngày thì tự chuyển sang
 `gpt-5.4-mini`; hết cả hai thì báo lỗi. Cả hai model dùng chung bảng
 `ai_daily_usage`, mỗi model một dòng riêng sau khi chạy migration 005.
@@ -381,8 +431,9 @@ Hãy đổi giá trị này trên production.
 - Với video: app tải tạm video/audio về thư mục temp của hệ điều hành, xoá
   ngay sau khi transcribe xong (thành công hoặc lỗi). Bản transcript, tiêu đề,
   mô tả video được gửi tới OpenAI (Agents SDK) để tóm tắt và kiểm chứng; các
-  truy vấn kiểm chứng còn được gửi qua công cụ `web_search` do OpenAI vận hành
-  để tìm nguồn công khai.
+  truy vấn kiểm chứng được gửi qua search provider local/cấu hình trong
+  `local_web_search` để tìm nguồn công khai, rồi chỉ phần nguồn đã lọc mới được
+  đưa vào agent.
 - Kết quả phân tích được lưu/cache trong Supabase để tạo link chia sẻ công khai
   và tránh gọi AI lại cho cùng một link.
 - Link chia sẻ dạng `/ten-bai-viet-<id>` là công khai với bất kỳ ai có URL.
