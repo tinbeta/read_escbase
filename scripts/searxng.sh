@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SEARXNG_DIR="$ROOT_DIR/searxng"
 APP_ENV="$ROOT_DIR/.env"
 SEARXNG_ENV="$SEARXNG_DIR/.env"
+COMPOSE_CMD=()
 
 usage() {
   cat <<'EOF'
@@ -19,13 +20,31 @@ Usage:
 EOF
 }
 
-need_docker() {
+detect_compose() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker compose)
+    return 0
+  fi
+
+  if command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker-compose)
+    return 0
+  fi
+
+  return 1
+}
+
+need_docker() {
+  if detect_compose; then
     return 0
   fi
 
   echo "Không tìm thấy Docker Compose."
-  echo "Cài Docker Desktop cho Mac rồi mở Docker Desktop trước khi chạy SearXNG:"
+  echo "Nếu dùng Colima, cài Docker CLI + Compose rồi start Colima:"
+  echo "  brew install docker docker-compose"
+  echo "  colima start --cpu 2 --memory 2 --disk 10"
+  echo
+  echo "Nếu dùng Docker Desktop, cài và mở Docker Desktop trước khi chạy SearXNG:"
   echo "  https://www.docker.com/get-started/"
   echo
   echo "Sau đó chạy lại:"
@@ -99,7 +118,10 @@ configure_app_env() {
 }
 
 compose() {
-  (cd "$SEARXNG_DIR" && docker compose "$@")
+  if [[ ${#COMPOSE_CMD[@]} -eq 0 ]]; then
+    need_docker
+  fi
+  (cd "$SEARXNG_DIR" && "${COMPOSE_CMD[@]}" "$@")
 }
 
 start() {
