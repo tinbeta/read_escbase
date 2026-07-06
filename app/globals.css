@@ -617,13 +617,23 @@ button { cursor: pointer; }
   gap: 6px;
 }
 .article-meta a { text-underline-offset: 4px; }
-.article-actions { display: flex; gap: 9px; margin-top: 28px; }
-.article-actions button {
-  min-width: 125px;
-  padding: 12px 16px;
-  color: var(--ink);
+.article-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 24px;
+}
+.article-actions span,
+.video-header-actions span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  color: #526157;
   background: #ece8df;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .lead-card, .article-section, .caveat-card, .takeaway-card {
@@ -1038,18 +1048,6 @@ button { cursor: pointer; }
   align-items: center;
   gap: 14px;
   margin-top: 18px;
-}
-.video-header-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 999px;
-  color: var(--ink);
-  background: #ece8df;
-  font-size: 12px;
-  font-weight: 700;
 }
 .video-source-link {
   display: inline-flex;
@@ -1521,7 +1519,7 @@ button { cursor: pointer; }
   .article-header { border-radius: 20px 20px 0 0; }
   .article-header h1 { font-size: 39px; }
   .article-subtitle { font-size: 17px; line-height: 1.6; }
-  .article-actions button { flex: 1; }
+  .article-actions span { flex: 1; justify-content: center; }
   .lead-card { grid-template-columns: 1fr; }
   .lead-card p:last-child { font-size: 21px; }
   .point-list, .split-grid { grid-template-columns: 1fr; }

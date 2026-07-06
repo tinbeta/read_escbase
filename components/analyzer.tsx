@@ -499,6 +499,8 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
               result={analysis.result as VideoAnalysisResult}
               sourceUrl={analysis.sourceUrl}
               slug={analysis.slug}
+              createdAt={analysis.createdAt}
+              tokenCount={analysis.tokenCount ?? analysis.requestTokens ?? null}
               onAnalyzeAnother={analyzeAnother}
             />
           ) : (
@@ -506,6 +508,8 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
               result={analysis.result as AnalysisResult}
               sourceUrl={analysis.sourceUrl}
               slug={analysis.slug}
+              createdAt={analysis.createdAt}
+              tokenCount={analysis.tokenCount ?? analysis.requestTokens ?? null}
               onAnalyzeAnother={analyzeAnother}
             />
           )}

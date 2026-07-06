@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           url: "/escbase-read-og.png",
           width: 1200,
           height: 630,
-          alt: "Escbase Read",
+          alt: "Fast Escbase - Đọc nhanh Video ngắn",
         },
       ],
     },
@@ -68,12 +68,16 @@ export default async function SharedAnalysisPage({ params }: PageProps) {
             result={analysis.result as VideoAnalysisResult}
             sourceUrl={analysis.sourceUrl}
             slug={analysis.slug}
+            createdAt={analysis.createdAt}
+            tokenCount={analysis.tokenCount}
           />
         ) : (
           <AnalysisView
             result={analysis.result as AnalysisResult}
             sourceUrl={analysis.sourceUrl}
             slug={analysis.slug}
+            createdAt={analysis.createdAt}
+            tokenCount={analysis.tokenCount}
           />
         )}
       </div>

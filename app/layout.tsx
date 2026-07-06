@@ -45,7 +45,7 @@ export const metadata: Metadata = {
         url: "/escbase-read-og.png",
         width: 1200,
         height: 630,
-        alt: "Fast Escbase",
+        alt: "Fast Escbase - Đọc nhanh Video ngắn",
       },
     ],
   },

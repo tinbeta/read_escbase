@@ -16,7 +16,6 @@ import {
   MessageCircleMore,
   PenLine,
   Quote,
-  Share2,
   ShieldAlert,
   Sparkles,
   Users,
@@ -24,13 +23,14 @@ import {
 import { useState } from "react";
 import Link from "next/link";
 import type { AnalysisResult } from "@/lib/schemas";
-import { analysisToText } from "@/lib/format";
 import { getAnalysisPath } from "@/lib/share-url";
 
 type Props = {
   result: AnalysisResult;
   sourceUrl: string;
   slug?: string | null;
+  createdAt?: string | null;
+  tokenCount?: number | null;
   onAnalyzeAnother?: () => void;
 };
 
@@ -74,6 +74,23 @@ function getShortLead(text: string) {
   return `${normalized.slice(0, 82).trim()}...`;
 }
 
+function formatTokenCount(value?: number | null) {
+  if (!value) return "Chưa lưu token";
+  return `${new Intl.NumberFormat("vi-VN").format(value)} token`;
+}
+
+function formatCreatedAt(value?: string | null) {
+  if (!value) return "Chưa lưu giờ tạo";
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 function buildDeepDiveItems(result: AnalysisResult) {
   const items: Array<{ kind: DeepDiveKind; title: string; body?: string }> = [];
 
@@ -109,29 +126,18 @@ function buildDeepDiveItems(result: AnalysisResult) {
   return items;
 }
 
-export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Props) {
-  const [copied, setCopied] = useState(false);
+export function AnalysisView({ result, sourceUrl, slug, createdAt, tokenCount, onAnalyzeAnother }: Props) {
+  const [linkCopied, setLinkCopied] = useState(false);
   const deepDiveItems = buildDeepDiveItems(result);
   const evidenceTypes = Array.from(new Set(result.mainPoints.map((point) => point.evidence)));
 
-  async function copyArticle() {
-    await navigator.clipboard.writeText(analysisToText(result, sourceUrl));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
-
-  async function shareArticle() {
+  async function copyArticleLink() {
     const shareUrl = slug
       ? `${window.location.origin}${getAnalysisPath(result.title, slug)}`
       : window.location.href;
-    const data = { title: result.title, url: shareUrl };
-    if (navigator.share) {
-      await navigator.share(data);
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    }
+    await navigator.clipboard.writeText(shareUrl);
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), 1800);
   }
 
   return (
@@ -148,10 +154,8 @@ export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Prop
           </a>
         </div>
         <div className="article-actions">
-          <button type="button" onClick={copyArticle}>
-            {copied ? <Check size={17} /> : <Copy size={17} />}
-            {copied ? "Đã copy" : "Copy bài"}
-          </button>
+          <span><Sparkles size={15} /> {formatTokenCount(tokenCount)}</span>
+          <span><Clock3 size={15} /> {formatCreatedAt(createdAt)}</span>
         </div>
       </header>
 
@@ -276,9 +280,9 @@ export function AnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Prop
       </p>
 
       <div className="article-bottom-actions">
-        <button type="button" className="article-share-action" onClick={shareArticle}>
-          <Share2 size={17} />
-          Chia sẻ
+        <button type="button" className="article-share-action" onClick={copyArticleLink}>
+          {linkCopied ? <Check size={17} /> : <Copy size={17} />}
+          {linkCopied ? "Đã copy link" : "Copy & chia sẻ"}
         </button>
         {onAnalyzeAnother ? (
           <button type="button" onClick={onAnalyzeAnother}>

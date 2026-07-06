@@ -11,14 +11,13 @@ import {
   ExternalLink,
   ListChecks,
   ScanSearch,
-  Share2,
   ShieldAlert,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { VideoAnalysisResult, VideoClaim } from "@/lib/video-schemas";
-import { videoAnalysisToText } from "@/lib/format";
 import { getAnalysisPath } from "@/lib/share-url";
 import { normalizeVideoAnalysisResult } from "@/lib/video-result";
 
@@ -26,6 +25,8 @@ type Props = {
   result: VideoAnalysisResult;
   sourceUrl: string;
   slug?: string | null;
+  createdAt?: string | null;
+  tokenCount?: number | null;
   onAnalyzeAnother?: () => void;
 };
 
@@ -117,8 +118,25 @@ function formatDuration(seconds: number | null): string | null {
   return `${minutes} phút${remainingSeconds ? ` ${remainingSeconds} giây` : ""}`;
 }
 
-export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Props) {
-  const [copied, setCopied] = useState(false);
+function formatTokenCount(value?: number | null) {
+  if (!value) return "Chưa lưu token";
+  return `${new Intl.NumberFormat("vi-VN").format(value)} token`;
+}
+
+function formatCreatedAt(value?: string | null) {
+  if (!value) return "Chưa lưu giờ tạo";
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+export function VideoAnalysisView({ result, sourceUrl, slug, createdAt, tokenCount, onAnalyzeAnother }: Props) {
+  const [linkCopied, setLinkCopied] = useState(false);
   const displayResult = useMemo(() => normalizeVideoAnalysisResult(result), [result]);
   const overallVerdict = displayResult.factCheck.overallVerdict;
   const OverallVerdictIcon = overallVerdictIconMap[overallVerdict];
@@ -130,24 +148,13 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
     overallVerdict === "opinion_no_factual_claims" &&
     displayResult.factCheck.claims.length === 0;
 
-  async function copyArticle() {
-    await navigator.clipboard.writeText(videoAnalysisToText(displayResult, sourceUrl));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
-
-  async function shareArticle() {
+  async function copyArticleLink() {
     const shareUrl = slug
       ? `${window.location.origin}${getAnalysisPath(displayResult.title, slug)}`
       : window.location.href;
-    const data = { title: displayResult.title, url: shareUrl };
-    if (navigator.share) {
-      await navigator.share(data);
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    }
+    await navigator.clipboard.writeText(shareUrl);
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), 1800);
   }
 
   return (
@@ -166,10 +173,8 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
         <h1>{displayResult.title}</h1>
         <p className="video-subtitle">{displayResult.subtitle}</p>
         <div className="video-header-actions">
-          <button type="button" onClick={copyArticle}>
-            {copied ? <Check size={15} /> : <Copy size={15} />}
-            {copied ? "Đã copy" : "Copy bài"}
-          </button>
+          <span><Sparkles size={13} /> {formatTokenCount(tokenCount)}</span>
+          <span><Clock3 size={13} /> {formatCreatedAt(createdAt)}</span>
           <a className="video-source-link" href={sourceUrl} target="_blank" rel="noreferrer">
             Xem video gốc <ArrowUpRight size={13} />
           </a>
@@ -281,9 +286,9 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
       </p>
 
       <div className="video-bottom-actions">
-        <button type="button" className="video-share-action" onClick={shareArticle}>
-          <Share2 size={16} />
-          Chia sẻ
+        <button type="button" className="video-share-action" onClick={copyArticleLink}>
+          {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+          {linkCopied ? "Đã copy link" : "Copy & chia sẻ"}
         </button>
         {onAnalyzeAnother ? (
           <button type="button" onClick={onAnalyzeAnother}>
