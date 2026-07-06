@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const normalizedUrl = normalizeSourceUrl(parsed.data.url);
     if (!detectVideoPlatform(normalizedUrl)) {
       return NextResponse.json(
-        { error: "Fast Escbase hiện chỉ hỗ trợ video TikTok, YouTube Shorts và Facebook Reel/video." },
+        { error: "Fast Escbase hiện chỉ hỗ trợ video TikTok, YouTube Shorts và Facebook Reel." },
         { status: 400 },
       );
     }

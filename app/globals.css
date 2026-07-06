@@ -261,13 +261,6 @@ button { cursor: pointer; }
   font-size: clamp(16px, 2vw, 19px);
   line-height: 1.75;
 }
-.hero-subcopy {
-  max-width: 590px;
-  margin: 8px auto 0;
-  color: #8a9690;
-  font-size: 13px;
-  line-height: 1.6;
-}
 .analyze-form {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -347,6 +340,27 @@ button { cursor: pointer; }
   background: rgba(3, 21, 14, 0.54);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
   text-align: left;
+}
+.queued-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 12px;
+  padding: 10px 11px;
+  border: 1px solid rgba(196, 239, 207, 0.38);
+  border-radius: 12px;
+  color: #e9f7e9;
+  background: rgba(25, 82, 50, 0.45);
+}
+.queued-status svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #9bf0b6;
+}
+.queued-status strong {
+  color: #f6fff6;
+  font-size: 14px;
+  line-height: 1.45;
 }
 .loading-progress-top {
   display: flex;

@@ -3,6 +3,7 @@
 import {
   ArrowRight,
   ArrowUpRight,
+  CheckCircle2,
   ClipboardPaste,
   Clock3,
   LoaderCircle,
@@ -194,7 +195,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
 
     const submittedUrl = url.trim();
     if (!detectVideoPlatform(submittedUrl)) {
-      setError("Fast Escbase hiện chỉ hỗ trợ video TikTok, YouTube Shorts và Facebook Reel/video.");
+      setError("Fast Escbase hiện chỉ hỗ trợ video TikTok, YouTube Shorts và Facebook Reel.");
       return;
     }
 
@@ -374,9 +375,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
             Dán link TikTok, Facebook Reel hoặc Youtube Short để AI tóm tắt và kiểm chứng
             tính đúng sai của nội dung.
           </p>
-          <p className="hero-subcopy">
-            Video dài sẽ được đưa vào thư viện trước, bạn có thể quay lại xem kết quả sau.
-          </p>
 
           <form className="analyze-form" onSubmit={submit}>
             <div className="url-field">
@@ -410,6 +408,12 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
           </form>
           {loading && (
             <div className="loading-progress-card" role="status" aria-live="polite">
+              {queuedMessage && (
+                <div className="queued-status">
+                  <CheckCircle2 size={22} />
+                  <strong>{queuedMessage}</strong>
+                </div>
+              )}
               <div className="loading-progress-top">
                 <span>{currentLoadingStep.detail}</span>
                 <strong>{loadingProgress}%</strong>
@@ -425,16 +429,17 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
                 <span style={{ width: `${loadingProgress}%` }} />
               </div>
               <p>
-                {queuedMessage ||
-                  (activeJobId
+                {queuedMessage
+                  ? "Bạn có thể tiếp tục chờ trên trang này; khi xong app sẽ tự mở kết quả."
+                  : activeJobId
                     ? "Bài đã nằm trong thư viện. Nếu rời app, bạn vẫn có thể quay lại xem kết quả."
-                    : "Video có thể mất 1-3 phút để tải, transcribe và kiểm chứng, tuỳ độ dài.")}
+                    : "Video có thể mất 1-3 phút để tải, transcribe và kiểm chứng, tuỳ độ dài."}
               </p>
             </div>
           )}
           {error && <p className="form-error">{error}</p>}
           <p className="privacy-note">
-            Chỉ dán link video công khai (TikTok, YouTube hoặc Facebook Reel/video).
+            Chỉ dán link video công khai (TikTok, YouTube hoặc Facebook Reel).
             Nội dung được gửi tới OpenAI để tóm tắt và tìm nguồn kiểm chứng.
           </p>
         </div>
