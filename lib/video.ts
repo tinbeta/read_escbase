@@ -6,14 +6,24 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
-import type { GatheredVideoSource, VideoPlatform, VideoSegment } from "@/lib/types";
+import type {
+  GatheredVideoSource,
+  VideoContactSheet,
+  VideoPlatform,
+  VideoSegment,
+} from "@/lib/types";
 
 const execFileAsync = promisify(execFile);
 
 const YT_DLP_TIMEOUT_MS = 45_000;
 const YT_DLP_DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 const WHISPER_TIMEOUT_MS = 10 * 60 * 1000;
+const FRAME_EXTRACTION_TIMEOUT_MS = 90_000;
 const MAX_BUFFER = 40 * 1024 * 1024;
+const CONTACT_SHEET_COLUMNS = 3;
+const CONTACT_SHEET_ROWS = 2;
+const CONTACT_SHEET_CELL_WIDTH = 320;
+const CONTACT_SHEET_CELL_HEIGHT = 568;
 
 const ytDlpMetadataSchema = z.object({
   id: z.string().nullable().optional(),
@@ -57,6 +67,11 @@ type VideoTranscript = {
   languageProbability: number | null;
   durationSeconds: number | null;
   segments: VideoSegment[];
+};
+
+type DownloadedVideoMedia = {
+  sourcePath: string;
+  audioPath: string;
 };
 
 function numberFromEnv(name: string, fallback: number): number {
@@ -159,23 +174,21 @@ async function findDownloadedFile(tmpDir: string, prefix: string): Promise<strin
 // has proven flaky for some TikTok/Facebook formats ("unable to obtain file
 // audio codec with ffprobe"). Doing the ffmpeg step explicitly avoids that
 // dependency and gives clearer errors when it does fail.
-async function downloadVideoAudio(sourceUrl: string, tmpDir: string): Promise<string> {
+async function downloadVideoMedia(sourceUrl: string, tmpDir: string): Promise<DownloadedVideoMedia> {
   const sourceTemplate = path.join(tmpDir, "source.%(ext)s");
+  const formatSelector = shouldExtractContactSheet()
+    ? "best[height<=720][vcodec*=h264][acodec!=none]/best[height<=720][vcodec*=avc][acodec!=none]/best[height<=720][vcodec!=none][acodec!=none]/best[vcodec*=h264]/best[vcodec*=avc]/best"
+    : "bestaudio/best[vcodec*=h264]/best[vcodec*=avc]/best";
   try {
     await execFileAsync(
       getYtDlpPath(),
       [
         "-f",
-        // Format selection is quirky per platform:
-        // - YouTube exposes real audio-only formats, so `bestaudio` is ideal
-        //   (smallest download).
-        // - TikTok has no audio-only format, and its bytevc1/h265 formats
-        //   advertise an aac track in metadata but actually download
-        //   video-only (silent). Its h264/avc formats carry real audio, so we
-        //   prefer those before falling back to plain `best`.
-        // We can't trust the `acodec` filter here precisely because TikTok's
-        // h265 metadata lies about it, hence the codec-based preference.
-        "bestaudio/best[vcodec*=h264]/best[vcodec*=avc]/best",
+        // With visual context enabled, prefer a modest video+audio stream so
+        // the same download can feed both ffmpeg frame extraction and audio
+        // transcription. TikTok h265 metadata can lie about audio, so h264/avc
+        // stays first before broader fallbacks.
+        formatSelector,
         "--no-playlist",
         "--no-warnings",
         "--no-part",
@@ -229,7 +242,141 @@ async function downloadVideoAudio(sourceUrl: string, tmpDir: string): Promise<st
   } catch {
     throw new Error("Không tạo được file âm thanh từ video này.");
   }
-  return audioPath;
+  return { sourcePath: downloadedPath, audioPath };
+}
+
+function shouldExtractContactSheet(): boolean {
+  return process.env.VIDEO_CONTACT_SHEET_ENABLED !== "false";
+}
+
+function pickFrameTimestamps(durationSeconds: number | null, frameCount: number): number[] {
+  if (frameCount <= 0) return [];
+
+  const fallback = [1, 3, 5, 8, 12, 18];
+  if (!durationSeconds || durationSeconds <= 0) return fallback.slice(0, frameCount);
+
+  if (durationSeconds <= 2) return [Math.max(0, durationSeconds / 2)];
+
+  const start = durationSeconds > 8 ? 1 : Math.max(0, durationSeconds * 0.08);
+  const end = durationSeconds > 8 ? durationSeconds - 1 : durationSeconds * 0.92;
+  if (frameCount === 1 || end <= start) return [Math.max(0, Math.min(start, durationSeconds - 0.1))];
+
+  const timestamps = Array.from({ length: frameCount }, (_, index) => {
+    const ratio = index / (frameCount - 1);
+    return start + (end - start) * ratio;
+  });
+
+  return Array.from(
+    new Set(
+      timestamps.map((timestamp) =>
+        Math.max(0, Math.min(durationSeconds - 0.1, Number(timestamp.toFixed(1)))),
+      ),
+    ),
+  );
+}
+
+async function extractFrame(
+  sourcePath: string,
+  outputPath: string,
+  timestamp: number,
+): Promise<boolean> {
+  try {
+    await execFileAsync(
+      getFfmpegPath(),
+      [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-ss",
+        String(timestamp),
+        "-i",
+        sourcePath,
+        "-frames:v",
+        "1",
+        "-vf",
+        `scale=${CONTACT_SHEET_CELL_WIDTH}:${CONTACT_SHEET_CELL_HEIGHT}:force_original_aspect_ratio=decrease,pad=${CONTACT_SHEET_CELL_WIDTH}:${CONTACT_SHEET_CELL_HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=white`,
+        "-q:v",
+        "5",
+        outputPath,
+      ],
+      { maxBuffer: MAX_BUFFER, timeout: FRAME_EXTRACTION_TIMEOUT_MS, env: getChildEnv() },
+    );
+    await fs.access(outputPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function buildContactSheet(framePattern: string, frameCount: number, outputPath: string): Promise<void> {
+  const rows = Math.ceil(frameCount / CONTACT_SHEET_COLUMNS);
+  await execFileAsync(
+    getFfmpegPath(),
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-y",
+      "-framerate",
+      "1",
+      "-start_number",
+      "1",
+      "-i",
+      framePattern,
+      "-vf",
+      `tile=${CONTACT_SHEET_COLUMNS}x${rows}:padding=8:margin=8:color=white`,
+      "-frames:v",
+      "1",
+      "-q:v",
+      "5",
+      outputPath,
+    ],
+    { maxBuffer: MAX_BUFFER, timeout: FRAME_EXTRACTION_TIMEOUT_MS, env: getChildEnv() },
+  );
+}
+
+async function extractVideoContactSheet(
+  sourcePath: string,
+  tmpDir: string,
+  durationSeconds: number | null,
+): Promise<VideoContactSheet | null> {
+  if (!shouldExtractContactSheet()) return null;
+
+  const requestedFrames = Math.min(
+    CONTACT_SHEET_COLUMNS * CONTACT_SHEET_ROWS,
+    numberFromEnv("VIDEO_CONTACT_SHEET_FRAMES", CONTACT_SHEET_COLUMNS * CONTACT_SHEET_ROWS),
+  );
+  const timestamps = pickFrameTimestamps(durationSeconds, requestedFrames);
+  if (timestamps.length === 0) return null;
+
+  const frameDir = path.join(tmpDir, "frames");
+  await fs.mkdir(frameDir, { recursive: true });
+
+  const keptTimestamps: number[] = [];
+  for (const timestamp of timestamps) {
+    const outputPath = path.join(frameDir, `frame-${String(keptTimestamps.length + 1).padStart(3, "0")}.jpg`);
+    const extracted = await extractFrame(sourcePath, outputPath, timestamp);
+    if (extracted) keptTimestamps.push(timestamp);
+  }
+
+  if (keptTimestamps.length === 0) return null;
+
+  const contactSheetPath = path.join(tmpDir, "contact-sheet.jpg");
+  try {
+    await buildContactSheet(path.join(frameDir, "frame-%03d.jpg"), keptTimestamps.length, contactSheetPath);
+    const image = await fs.readFile(contactSheetPath);
+    return {
+      dataUrl: `data:image/jpeg;base64,${image.toString("base64")}`,
+      frameCount: keptTimestamps.length,
+      timestamps: keptTimestamps,
+      detail: "low",
+    };
+  } catch (error) {
+    const { message, stderr } = readExecError(error);
+    console.warn(`Không tạo được contact sheet video: ${stderr || message}`);
+    return null;
+  }
 }
 
 async function transcribeAudio(audioPath: string): Promise<VideoTranscript> {
@@ -290,7 +437,8 @@ export async function gatherVideoSource(
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "escbase-video-"));
   try {
-    const audioPath = await downloadVideoAudio(sourceUrl, tmpDir);
+    const media = await downloadVideoMedia(sourceUrl, tmpDir);
+    const audioPath = media.audioPath;
     const transcript = await transcribeAudio(audioPath);
 
     if (!transcript.text.trim()) {
@@ -298,6 +446,11 @@ export async function gatherVideoSource(
         "Không nhận diện được lời nói trong video này. Video có thể không có giọng nói, chỉ có nhạc, hoặc âm thanh quá nhỏ.",
       );
     }
+
+    const durationSeconds =
+      metadata.durationSeconds ??
+      (transcript.durationSeconds ? Math.round(transcript.durationSeconds) : null);
+    const visualContactSheet = await extractVideoContactSheet(media.sourcePath, tmpDir, durationSeconds);
 
     return {
       sourceType: "video",
@@ -307,12 +460,11 @@ export async function gatherVideoSource(
       title: metadata.title,
       description: metadata.description,
       uploader: metadata.uploader,
-      durationSeconds:
-        metadata.durationSeconds ??
-        (transcript.durationSeconds ? Math.round(transcript.durationSeconds) : null),
+      durationSeconds,
       transcript: transcript.text,
       transcriptSegments: transcript.segments,
       language: transcript.language,
+      visualContactSheet,
     };
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);

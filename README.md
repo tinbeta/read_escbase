@@ -6,7 +6,9 @@ web search local. App lưu bài vào thư viện riêng theo tài khoản Google
 đăng nhập.
 
 Với link video YouTube/TikTok/Facebook Reel, app dùng
-[`yt-dlp`](https://github.com/yt-dlp/yt-dlp) để tải âm thanh và
+[`yt-dlp`](https://github.com/yt-dlp/yt-dlp) để tải video/audio,
+[`ffmpeg`](https://ffmpeg.org/) để tách âm thanh và ghép contact sheet vài
+frame đại diện, rồi dùng
 [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper) (qua một script Python
 riêng) để transcribe, sau đó dùng [`@openai/agents`](https://www.npmjs.com/package/@openai/agents)
 với công cụ local `local_web_search` để kiểm chứng các tuyên bố trong video bằng
@@ -36,7 +38,7 @@ lib/
   bird.ts                  Legacy: đọc thread/replies X bằng @steipete/bird
   source.ts                Chọn nguồn video, legacy X/web vẫn còn cho code cũ
   video-platform.ts        Nhận diện link YouTube/TikTok/Facebook Reel (client-safe)
-  video.ts                 Tải audio bằng yt-dlp, transcribe bằng faster-whisper
+  video.ts                 Tải video/audio, tách contact sheet, transcribe bằng faster-whisper
   video-analyze.ts         Agent + local_web_search để tóm tắt & kiểm chứng video
   local-web-search.ts      Search provider local, đọc trang, rank nguồn, cache
   local-web-search-tool.ts Function tool cho @openai/agents
@@ -345,6 +347,8 @@ WHISPER_MODEL_SIZE=small
 WHISPER_COMPUTE_TYPE=int8
 WHISPER_DEVICE=cpu
 VIDEO_MAX_DURATION_SECONDS=1200
+VIDEO_CONTACT_SHEET_ENABLED=true
+VIDEO_CONTACT_SHEET_FRAMES=6
 ```
 
 Quota token dùng hai free tier thật của OpenAI (cấu hình ở phần OpenAI phía trên):
@@ -365,6 +369,10 @@ web search. Khi phân tích video, hệ thống thử
 tránh tải/transcribe/phân tích quá lâu trong một request. `WHISPER_MODEL_SIZE`
 càng lớn (`small` -> `medium` -> `large-v3`) thì transcript càng chính xác
 nhưng càng chậm trên CPU; `int8` compute type phù hợp cho CPU thông thường.
+`VIDEO_CONTACT_SHEET_ENABLED=true` cho phép app ghép một ảnh contact sheet từ
+vài frame đại diện (mặc định `VIDEO_CONTACT_SHEET_FRAMES=6`) và gửi kèm agent ở
+`detail: low` để hiểu bối cảnh thị giác. Tắt biến này nếu muốn tải nhẹ hơn và
+tiết kiệm token tối đa.
 
 Route `/api/analyze` chỉ tạo job video rồi trả về ngay. Worker nền trong Node
 process local sẽ tải/transcribe/phân tích tiếp; nếu người dùng rời tab, bài vẫn

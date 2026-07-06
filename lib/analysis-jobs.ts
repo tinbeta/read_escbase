@@ -64,7 +64,9 @@ async function runAnalysisJob(jobId: string): Promise<void> {
     if (await completeFromCache(job.id, cachedAfterGather)) return;
 
     if (source.sourceType === "video") {
-      const reservation = await reserveVideoQuota(estimateVideoReservation(source.transcript.length));
+      const reservation = await reserveVideoQuota(
+        estimateVideoReservation(source.transcript.length, source.visualContactSheet?.frameCount ?? 0),
+      );
       let videoTokens = 0;
 
       try {

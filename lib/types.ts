@@ -35,6 +35,13 @@ export type VideoSegment = {
   text: string;
 };
 
+export type VideoContactSheet = {
+  dataUrl: string;
+  frameCount: number;
+  timestamps: number[];
+  detail: "low";
+};
+
 export type GatheredVideoSource = {
   sourceType: "video";
   sourceUrl: string;
@@ -47,6 +54,7 @@ export type GatheredVideoSource = {
   transcript: string;
   transcriptSegments: VideoSegment[];
   language: string | null;
+  visualContactSheet: VideoContactSheet | null;
 };
 
 export type AnyGatheredSource = GatheredSource | GatheredVideoSource;

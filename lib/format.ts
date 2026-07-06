@@ -1,5 +1,6 @@
 import type { AnalysisResult } from "@/lib/schemas";
 import type { VideoAnalysisResult } from "@/lib/video-schemas";
+import { normalizeVideoAnalysisResult } from "@/lib/video-result";
 
 const evidenceLabels = {
   author_claim: "Tuyên bố của tác giả",
@@ -70,6 +71,7 @@ const overallVerdictLabels = {
   mostly_accurate: "Đa số chính xác",
   mixed: "Có đúng có sai",
   mostly_inaccurate: "Đa số không chính xác",
+  needs_context: "Cần thêm bối cảnh",
   unverifiable: "Không thể kiểm chứng",
   opinion_no_factual_claims: "Chỉ là ý kiến, không có tuyên bố cần kiểm chứng",
 } as const;
@@ -84,47 +86,48 @@ const claimVerdictLabels = {
 } as const;
 
 export function videoAnalysisToText(result: VideoAnalysisResult, sourceUrl: string): string {
+  const displayResult = normalizeVideoAnalysisResult(result);
   const lines = [
-    result.title,
-    result.subtitle,
+    displayResult.title,
+    displayResult.subtitle,
     "",
     "🧭 Tóm tắt nội dung",
-    result.summary.overview,
+    displayResult.summary.overview,
     "",
     "🔎 Ý chính",
-    ...result.summary.mainPoints.map((point) => `• ${point.title}: ${point.explanation}`),
+    ...displayResult.summary.mainPoints.map((point) => `• ${point.title}: ${point.explanation}`),
   ];
 
-  if (result.summary.keyQuotes.length) {
-    lines.push("", "💬 Trích dẫn đáng chú ý", ...result.summary.keyQuotes.map((quote) => `• "${quote}"`));
+  if (displayResult.summary.keyQuotes.length) {
+    lines.push("", "💬 Trích dẫn đáng chú ý", ...displayResult.summary.keyQuotes.map((quote) => `• "${quote}"`));
   }
 
   lines.push(
     "",
-    `✅ Kiểm chứng tính đúng sai — ${overallVerdictLabels[result.factCheck.overallVerdict]}`,
-    result.factCheck.summary,
+    `✅ Kiểm chứng tính đúng sai — ${overallVerdictLabels[displayResult.factCheck.overallVerdict]}`,
+    displayResult.factCheck.summary,
   );
 
-  if (result.factCheck.claims.length) {
+  if (displayResult.factCheck.claims.length) {
     lines.push(
       "",
       "Chi tiết từng tuyên bố:",
-      ...result.factCheck.claims.map(
+      ...displayResult.factCheck.claims.map(
         (claim) => `• [${claimVerdictLabels[claim.verdict]}] ${claim.claim}\n  ${claim.explanation}`,
       ),
     );
   }
 
-  if (result.factCheck.sources.length) {
+  if (displayResult.factCheck.sources.length) {
     lines.push(
       "",
       "🔗 Nguồn đã dùng để kiểm chứng",
-      ...result.factCheck.sources.map((source) => `• ${source.title}\n  ${source.url}`),
+      ...displayResult.factCheck.sources.map((source) => `• ${source.title}\n  ${source.url}`),
     );
   }
 
-  if (result.factCheck.caveats.length) {
-    lines.push("", "⚠️ Lưu ý", ...result.factCheck.caveats.map((item) => `• ${item}`));
+  if (displayResult.factCheck.caveats.length) {
+    lines.push("", "⚠️ Lưu ý", ...displayResult.factCheck.caveats.map((item) => `• ${item}`));
   }
 
   lines.push("", `Nguồn gốc: ${sourceUrl}`);

@@ -15,11 +15,12 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { VideoAnalysisResult, VideoClaim } from "@/lib/video-schemas";
 import { videoAnalysisToText } from "@/lib/format";
 import { getAnalysisPath } from "@/lib/share-url";
+import { normalizeVideoAnalysisResult } from "@/lib/video-result";
 
 type Props = {
   result: VideoAnalysisResult;
@@ -65,6 +66,7 @@ const overallVerdictLabels = {
   mostly_accurate: "Đa số chính xác",
   mixed: "Có đúng có sai",
   mostly_inaccurate: "Đa số không chính xác",
+  needs_context: "Cần thêm bối cảnh",
   unverifiable: "Không thể kiểm chứng",
   opinion_no_factual_claims: "Chỉ là ý kiến",
 } as const;
@@ -73,6 +75,7 @@ const overallVerdictIconMap = {
   mostly_accurate: BadgeCheck,
   mixed: AlertTriangle,
   mostly_inaccurate: ShieldAlert,
+  needs_context: Compass,
   unverifiable: ScanSearch,
   opinion_no_factual_claims: Compass,
 } satisfies Record<VideoAnalysisResult["factCheck"]["overallVerdict"], typeof BadgeCheck>;
@@ -116,26 +119,28 @@ function formatDuration(seconds: number | null): string | null {
 
 export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }: Props) {
   const [copied, setCopied] = useState(false);
-  const OverallVerdictIcon = overallVerdictIconMap[result.factCheck.overallVerdict];
-  const duration = formatDuration(result.durationSeconds);
-  const pullQuote = result.summary.keyQuotes[0];
+  const displayResult = useMemo(() => normalizeVideoAnalysisResult(result), [result]);
+  const overallVerdict = displayResult.factCheck.overallVerdict;
+  const OverallVerdictIcon = overallVerdictIconMap[overallVerdict];
+  const duration = formatDuration(displayResult.durationSeconds);
+  const pullQuote = displayResult.summary.keyQuotes[0];
   // Entertainment/opinion videos get a light note instead of the full
   // fact-check banner + claim cards, since there is nothing to verify.
   const isOpinionOnly =
-    result.factCheck.overallVerdict === "opinion_no_factual_claims" &&
-    result.factCheck.claims.length === 0;
+    overallVerdict === "opinion_no_factual_claims" &&
+    displayResult.factCheck.claims.length === 0;
 
   async function copyArticle() {
-    await navigator.clipboard.writeText(videoAnalysisToText(result, sourceUrl));
+    await navigator.clipboard.writeText(videoAnalysisToText(displayResult, sourceUrl));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   }
 
   async function shareArticle() {
     const shareUrl = slug
-      ? `${window.location.origin}${getAnalysisPath(result.title, slug)}`
+      ? `${window.location.origin}${getAnalysisPath(displayResult.title, slug)}`
       : window.location.href;
-    const data = { title: result.title, url: shareUrl };
+    const data = { title: displayResult.title, url: shareUrl };
     if (navigator.share) {
       await navigator.share(data);
     } else {
@@ -149,8 +154,8 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
     <article className="video-result">
       <header className="video-header">
         <div className="video-badges">
-          <span className={`video-badge video-badge-platform platform-${result.platform}`}>
-            <PlatformLogo platform={result.platform} size={13} /> {platformLabels[result.platform]}
+          <span className={`video-badge video-badge-platform platform-${displayResult.platform}`}>
+            <PlatformLogo platform={displayResult.platform} size={13} /> {platformLabels[displayResult.platform]}
           </span>
           {duration && (
             <span className="video-badge video-badge-duration">
@@ -158,8 +163,8 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
             </span>
           )}
         </div>
-        <h1>{result.title}</h1>
-        <p className="video-subtitle">{result.subtitle}</p>
+        <h1>{displayResult.title}</h1>
+        <p className="video-subtitle">{displayResult.subtitle}</p>
         <div className="video-header-actions">
           <button type="button" onClick={copyArticle}>
             {copied ? <Check size={15} /> : <Copy size={15} />}
@@ -175,9 +180,9 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
         <p className="video-section-label">
           <ListChecks size={15} /> Tóm tắt nội dung
         </p>
-        <p className="video-overview">{result.summary.overview}</p>
+        <p className="video-overview">{displayResult.summary.overview}</p>
         <div className="video-point-list">
-          {result.summary.mainPoints.map((point, index) => (
+          {displayResult.summary.mainPoints.map((point, index) => (
             <div className="video-point" key={`${point.title}-${index}`}>
               <span className="video-point-index">{index + 1}</span>
               <div>
@@ -197,20 +202,20 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
         {isOpinionOnly ? (
           <div className="video-factcheck-note">
             <Compass size={17} />
-            <p>{result.factCheck.summary}</p>
+            <p>{displayResult.factCheck.summary}</p>
           </div>
         ) : (
           <>
-            <div className={`video-verdict-banner verdict-${result.factCheck.overallVerdict}`}>
+            <div className={`video-verdict-banner verdict-${overallVerdict}`}>
               <div className="video-verdict-head">
                 <span className="video-verdict-icon">
                   <OverallVerdictIcon size={19} />
                 </span>
-                <strong>{overallVerdictLabels[result.factCheck.overallVerdict]}</strong>
+                <strong>{overallVerdictLabels[overallVerdict]}</strong>
               </div>
-              {result.factCheck.claims.length > 0 ? (
+              {displayResult.factCheck.claims.length > 0 ? (
                 <ul className="video-verdict-points">
-                  {result.factCheck.claims.map((claim, index) => {
+                  {displayResult.factCheck.claims.map((claim, index) => {
                     const mark = claimQuickMarkMap[claim.verdict];
                     return (
                       <li key={`${claim.claim}-${index}`}>
@@ -223,13 +228,13 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
                   })}
                 </ul>
               ) : (
-                <p>{result.factCheck.summary}</p>
+                <p>{displayResult.factCheck.summary}</p>
               )}
             </div>
 
-            {result.factCheck.claims.length > 0 ? (
+            {displayResult.factCheck.claims.length > 0 ? (
               <div className="video-claim-list">
-                {result.factCheck.claims.map((claim, index) => {
+                {displayResult.factCheck.claims.map((claim, index) => {
                   const ClaimIcon = claimVerdictIconMap[claim.verdict];
                   return (
                     <div className={`video-claim verdict-${claim.verdict}`} key={`${claim.claim}-${index}`}>
@@ -264,8 +269,8 @@ export function VideoAnalysisView({ result, sourceUrl, slug, onAnalyzeAnother }:
           </>
         )}
 
-        {result.factCheck.caveats.length > 0 && (
-          <p className="video-caveat-note">{result.factCheck.caveats.join(" ")}</p>
+        {displayResult.factCheck.caveats.length > 0 && (
+          <p className="video-caveat-note">{displayResult.factCheck.caveats.join(" ")}</p>
         )}
       </section>
 

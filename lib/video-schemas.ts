@@ -13,6 +13,7 @@ export const videoOverallVerdictSchema = z.enum([
   "mostly_accurate",
   "mixed",
   "mostly_inaccurate",
+  "needs_context",
   "unverifiable",
   "opinion_no_factual_claims",
 ]);
