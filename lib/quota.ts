@@ -3,13 +3,11 @@ import "server-only";
 import type { GatheredSource, ModelQuotaStatus, QuotaStatus } from "@/lib/types";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
-// One unified quota system for the whole app. Both text (X/blog) analysis and
-// video analysis draw from the same per-model daily buckets, matching the two
-// real OpenAI free tiers:
+// One unified quota system for video analysis across the two real OpenAI free tiers:
 //   - gpt-5.4-mini : the large free tier (default 2.5M/day)
 //   - gpt-5.4      : the smaller free tier (default 250k/day)
-// Text analysis is locked to gpt-5.4-mini. Video analysis tries gpt-5.4 first
-// (higher quality) and falls back to gpt-5.4-mini when the small tier is out.
+// Video analysis tries gpt-5.4 first (higher quality) and falls back to
+// gpt-5.4-mini when the small tier is out.
 // Both models share the same `ai_daily_usage` table/RPCs, keyed by the real
 // (usage_day, model) pair (see migration 005) — no fake dates needed.
 
@@ -168,7 +166,6 @@ async function reserveForConfigs(configs: ModelConfig[], tokens: number): Promis
   throw new Error("Quota an toàn hôm nay không đủ cho yêu cầu này. Hãy thử lại sau.");
 }
 
-// Text (X/blog) analysis is locked to gpt-5.4-mini.
 export async function reserveQuota(tokens: number): Promise<Reservation> {
   return reserveForConfigs([configFor("gpt-5.4-mini")], tokens);
 }

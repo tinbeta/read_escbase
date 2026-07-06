@@ -1,21 +1,12 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { ensureAnalysisJobRunning } from "@/lib/analysis-jobs";
 import { AuthError, requireAllowedUser } from "@/lib/auth";
-import { analyzeSource } from "@/lib/analyze";
-import { analyzeVideoSource } from "@/lib/video-analyze";
 import { analyzeRequestSchema } from "@/lib/schemas";
-import { gatherSource } from "@/lib/source";
-import { findRecentAnalysis, saveAnalysis } from "@/lib/supabase";
+import { createAnalysisJob, findRecentAnalysis } from "@/lib/supabase";
 import { normalizeSourceUrl } from "@/lib/url";
-import {
-  estimateReservation,
-  estimateVideoReservation,
-  finalizeQuota,
-  finalizeVideoQuota,
-  getQuotaStatus,
-  reserveQuota,
-  reserveVideoQuota,
-} from "@/lib/quota";
+import { detectVideoPlatform } from "@/lib/video-platform";
+import { getQuotaStatus } from "@/lib/quota";
 
 export const runtime = "nodejs";
 // Video analysis (download + transcribe + web-search fact-check) is much
@@ -43,7 +34,7 @@ function isRateLimited(request: NextRequest): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAllowedUser(request);
+    const { user } = await requireAllowedUser(request);
 
     const body: unknown = await request.json();
     const parsed = analyzeRequestSchema.safeParse(body);
@@ -55,7 +46,14 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedUrl = normalizeSourceUrl(parsed.data.url);
-    const cached = await findRecentAnalysis(normalizedUrl);
+    if (!detectVideoPlatform(normalizedUrl)) {
+      return NextResponse.json(
+        { error: "Fast Escbase hiện chỉ hỗ trợ video TikTok, YouTube Shorts và Facebook Reel/video." },
+        { status: 400 },
+      );
+    }
+
+    const cached = await findRecentAnalysis(normalizedUrl, user.id);
     if (cached) {
       return NextResponse.json({ ...cached, cached: true, quota: await getQuotaStatus() });
     }
@@ -67,71 +65,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const source = await gatherSource(normalizedUrl);
-
-    if (source.sourceType === "video") {
-      const videoReservation = await reserveVideoQuota(estimateVideoReservation(source.transcript.length));
-      let videoTokens = 0;
-
-      try {
-        const analyzed = await analyzeVideoSource(source, videoReservation.model);
-        videoTokens = analyzed.totalTokens;
-        await finalizeVideoQuota(videoReservation, videoTokens, true);
-
-        const slug = await saveAnalysis({
-          sourceUrl: source.sourceUrl,
-          sourceType: "video",
-          result: analyzed.result,
-          tokenCount: videoTokens,
-        });
-
-        return NextResponse.json({
-          slug,
-          sourceUrl: source.sourceUrl,
-          sourceType: "video",
-          createdAt: new Date().toISOString(),
-          tokenCount: videoTokens,
-          result: analyzed.result,
-          cached: false,
-          requestTokens: videoTokens,
-          quota: await getQuotaStatus(),
-        });
-      } catch (error) {
-        await finalizeVideoQuota(videoReservation, videoTokens, false);
-        throw error;
-      }
+    const job = await createAnalysisJob({
+      ownerUserId: user.id,
+      sourceUrl: normalizedUrl,
+      sourceType: "video",
+    });
+    if (!job) {
+      return NextResponse.json(
+        { error: "Không tạo được job phân tích video. Hãy kiểm tra migration Supabase." },
+        { status: 500 },
+      );
     }
 
-    const reservation = await reserveQuota(estimateReservation(source));
-    let totalTokens = 0;
+    ensureAnalysisJobRunning(job.id);
 
-    try {
-      const analyzed = await analyzeSource(source);
-      totalTokens = analyzed.totalTokens;
-      await finalizeQuota(reservation, totalTokens, true);
-
-      const slug = await saveAnalysis({
-        sourceUrl: source.sourceUrl,
-        sourceType: source.sourceType,
-        result: analyzed.result,
-        tokenCount: totalTokens,
-      });
-
-      return NextResponse.json({
-        slug,
-        sourceUrl: source.sourceUrl,
-        sourceType: source.sourceType,
-        createdAt: new Date().toISOString(),
-        tokenCount: totalTokens,
-        result: analyzed.result,
-        cached: false,
-        requestTokens: totalTokens,
+    return NextResponse.json(
+      {
+        jobId: job.id,
+        status: job.status,
+        sourceUrl: job.sourceUrl,
+        sourceType: job.sourceType,
+        createdAt: job.createdAt,
+        queued: true,
+        message: "Bài viết đã được thêm vào thư viện. Bạn có thể chờ xem kết quả hoặc quay lại sau.",
         quota: await getQuotaStatus(),
-      });
-    } catch (error) {
-      await finalizeQuota(reservation, totalTokens, false);
-      throw error;
-    }
+      },
+      { status: 202 },
+    );
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

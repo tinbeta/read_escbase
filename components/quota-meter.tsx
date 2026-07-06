@@ -80,8 +80,8 @@ export function QuotaMeter({ quota }: { quota: QuotaStatus | null }) {
         </p>
       )}
       <p className="quota-scope">
-        Chung cho cả phân tích video và X/blog. Video thử GPT-5.4 trước, hết thì dùng
-        GPT-5.4 mini; X/blog luôn dùng mini. Reset 00:00 UTC (07:00 sáng Việt Nam).
+        Phân tích video thử GPT-5.4 trước, hết thì dùng GPT-5.4 mini. Reset 00:00
+        UTC (07:00 sáng Việt Nam).
       </p>
     </div>
   );

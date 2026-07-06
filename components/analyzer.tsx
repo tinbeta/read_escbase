@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { AnalysisResult } from "@/lib/schemas";
 import type { VideoAnalysisResult } from "@/lib/video-schemas";
 import type {
+  AnalysisListItem,
   QuotaStatus,
   StoredAnalysis,
   TodayAnalyses,
@@ -36,38 +37,10 @@ type AnalysisResponse = StoredAnalysis & {
 const examples = [
   "https://www.tiktok.com/@user/video/...",
   "https://www.youtube.com/shorts/...",
-  "https://x.com/username/status/123...",
-  "https://example.com/blog/bai-viet",
+  "https://www.facebook.com/reel/...",
 ];
 const sourceTypeLabels = { x: "X", web: "Blog", video: "Video" } as const;
 const TODAY_PAGE_SIZE = 10;
-const textLoadingSteps = [
-  {
-    label: "Đang đọc nguồn...",
-    detail: "Mở link và lấy nội dung gốc.",
-  },
-  {
-    label: "Đang gom ngữ cảnh...",
-    detail: "Kiểm tra replies, link liên quan và dữ liệu phụ.",
-  },
-  {
-    label: "Đang lọc ý chính...",
-    detail: "Tách dữ kiện, ý kiến cộng đồng và điểm cần chú ý.",
-  },
-  {
-    label: "Đang biên tập tiếng Việt...",
-    detail: "Viết lại thành bản đọc nhanh, rõ ý trên mobile.",
-  },
-  {
-    label: "Đang rà lại kết quả...",
-    detail: "Kiểm tra ngôn ngữ, cấu trúc và phần chia sẻ.",
-  },
-  {
-    label: "Sắp xong rồi...",
-    detail: "Thread dài hoặc có nhiều link có thể mất hơn 30 giây.",
-  },
-] as const;
-
 const videoLoadingSteps = [
   {
     label: "Đang tải video...",
@@ -95,6 +68,13 @@ const videoLoadingSteps = [
   },
 ] as const;
 
+const jobStatusLabels = {
+  queued: "Đã thêm vào thư viện",
+  processing: "Đang phân tích nền",
+  failed: "Phân tích lỗi",
+  succeeded: "",
+} as const;
+
 type Props = {
   initialTodayAnalyses: TodayAnalyses;
 };
@@ -113,6 +93,10 @@ function formatTokenCount(value: number | null) {
   return `${new Intl.NumberFormat("vi-VN").format(value)} token`;
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export function Analyzer({ initialTodayAnalyses }: Props) {
   const router = useRouter();
   const { accessToken, signOut } = useAuth();
@@ -127,10 +111,12 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   const [todayLoading, setTodayLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [isVideoRequest, setIsVideoRequest] = useState(false);
+  const [queuedMessage, setQueuedMessage] = useState("");
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pollRunRef = useRef(0);
   const todayTotalPages = Math.max(1, Math.ceil(todayCount / TODAY_PAGE_SIZE));
-  const loadingSteps = isVideoRequest ? videoLoadingSteps : textLoadingSteps;
+  const loadingSteps = videoLoadingSteps;
   const currentLoadingStep = loadingSteps[loadingStep] ?? loadingSteps[0];
 
   const authHeaders: Record<string, string> = accessToken
@@ -138,15 +124,25 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
     : {};
 
   useEffect(() => {
+    if (!accessToken) return;
+
     fetch("/api/quota", { cache: "no-store", headers: authHeaders })
       .then((response) => response.json())
       .then((body) => {
         if (!body.error) setQuota(body);
       })
       .catch(() => undefined);
+
+    void loadTodayPage(1, true);
     // Only re-run when the token itself changes, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
+
+  useEffect(() => {
+    return () => {
+      pollRunRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading) return;
@@ -191,20 +187,40 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setQueuedMessage("");
+    setActiveJobId(null);
     setLoadingStep(0);
     setLoadingProgress(7);
-    setIsVideoRequest(detectVideoPlatform(url) !== null);
+
+    const submittedUrl = url.trim();
+    if (!detectVideoPlatform(submittedUrl)) {
+      setError("Fast Escbase hiện chỉ hỗ trợ video TikTok, YouTube Shorts và Facebook Reel/video.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: submittedUrl }),
       });
       const body = await response.json();
       if (body.quota) setQuota(body.quota);
       if (!response.ok) throw new Error(body.error || "Không thể phân tích đường dẫn.");
+
+      if (response.status === 202 && body.jobId) {
+        setActiveJobId(body.jobId);
+        setQueuedMessage(
+          body.message || "Bài viết đã được thêm vào thư viện. Bạn có thể chờ xem kết quả hoặc quay lại sau.",
+        );
+        void loadTodayPage(1, true);
+        const pollRunId = pollRunRef.current + 1;
+        pollRunRef.current = pollRunId;
+        await pollAnalysisJob(body.jobId, pollRunId);
+        return;
+      }
 
       // Once saved, jump straight to the article page instead of showing it
       // inline and scrolling. Falls back to inline render when there's no slug
@@ -224,6 +240,31 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
       setLoading(false);
       setLoadingStep(0);
       setLoadingProgress(0);
+    }
+  }
+
+  async function pollAnalysisJob(jobId: string, pollRunId: number) {
+    while (pollRunRef.current === pollRunId) {
+      await delay(3000);
+      if (pollRunRef.current !== pollRunId) return;
+
+      const response = await fetch(`/api/analyze/job/${encodeURIComponent(jobId)}`, {
+        cache: "no-store",
+        headers: authHeaders,
+      });
+      const body = await response.json();
+      if (body.quota) setQuota(body.quota);
+      void loadTodayPage(1, true);
+
+      if (!response.ok) throw new Error(body.error || "Không thể đọc trạng thái phân tích.");
+      if (body.status === "failed") {
+        throw new Error(body.error || "Phân tích video thất bại. Hãy thử lại sau.");
+      }
+      if (body.status === "succeeded" && body.slug && body.result?.title) {
+        setQueuedMessage("Phân tích xong. Đang mở bài trong thư viện...");
+        router.push(getAnalysisPath(body.result.title, body.slug));
+        return;
+      }
     }
   }
 
@@ -255,6 +296,43 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
       document.querySelector(".hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
       inputRef.current?.focus({ preventScroll: true });
     });
+  }
+
+  function renderTodayItem(item: AnalysisListItem) {
+    const meta = item.status === "succeeded"
+      ? formatTokenCount(item.tokenCount)
+      : jobStatusLabels[item.status] || "Đang xử lý";
+    const content = (
+      <>
+        <span className="today-time">{formatVietnamTime(item.createdAt)}</span>
+        <span className="today-source">{sourceTypeLabels[item.sourceType]}</span>
+        <span className="today-title">
+          <strong>{item.title}</strong>
+          <small>{item.error || meta}</small>
+        </span>
+        {item.status === "succeeded" ? (
+          <ArrowUpRight size={17} aria-hidden="true" />
+        ) : item.status === "failed" ? (
+          <span className="today-job-state today-job-state-failed">!</span>
+        ) : (
+          <LoaderCircle className="spin today-job-spinner" size={16} aria-hidden="true" />
+        )}
+      </>
+    );
+
+    if (item.status === "succeeded" && item.slug) {
+      return (
+        <Link href={getAnalysisPath(item.title, item.slug)} key={item.id}>
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <div className={`today-job today-job-${item.status}`} key={item.id}>
+        {content}
+      </div>
+    );
   }
 
   return (
@@ -297,7 +375,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
             tính đúng sai của nội dung.
           </p>
           <p className="hero-subcopy">
-            Vẫn đọc được thread X/Twitter và bài blog nếu bạn dán link đó vào ô bên dưới.
+            Video dài sẽ được đưa vào thư viện trước, bạn có thể quay lại xem kết quả sau.
           </p>
 
           <form className="analyze-form" onSubmit={submit}>
@@ -310,7 +388,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
                 onChange={(event) => setUrl(event.target.value)}
                 placeholder={examples[0]}
                 required
-                aria-label="Đường dẫn TikTok, YouTube Short, Facebook Reel, X hoặc blog"
+                aria-label="Đường dẫn TikTok, YouTube Short hoặc Facebook Reel"
               />
               <button
                 className="paste-button"
@@ -347,15 +425,16 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
                 <span style={{ width: `${loadingProgress}%` }} />
               </div>
               <p>
-                {isVideoRequest
-                  ? "Video có thể mất 1-3 phút để tải, transcribe và kiểm chứng, tuỳ độ dài."
-                  : "Thường mất 20-60 giây nếu thread dài, có nhiều replies hoặc link ngoài."}
+                {queuedMessage ||
+                  (activeJobId
+                    ? "Bài đã nằm trong thư viện. Nếu rời app, bạn vẫn có thể quay lại xem kết quả."
+                    : "Video có thể mất 1-3 phút để tải, transcribe và kiểm chứng, tuỳ độ dài.")}
               </p>
             </div>
           )}
           {error && <p className="form-error">{error}</p>}
           <p className="privacy-note">
-            Chỉ dán link công khai (TikTok, YouTube, Facebook Reel, X/Twitter hoặc blog).
+            Chỉ dán link video công khai (TikTok, YouTube hoặc Facebook Reel/video).
             Nội dung được gửi tới OpenAI để tóm tắt và tìm nguồn kiểm chứng.
           </p>
         </div>
@@ -382,15 +461,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
           <>
             <div className={`today-list${todayLoading ? " today-list-loading" : ""}`}>
               {todayItems.map((item) => (
-                <Link href={getAnalysisPath(item.title, item.slug)} key={item.slug}>
-                  <span className="today-time">{formatVietnamTime(item.createdAt)}</span>
-                  <span className="today-source">{sourceTypeLabels[item.sourceType]}</span>
-                  <span className="today-title">
-                    <strong>{item.title}</strong>
-                    <small>{formatTokenCount(item.tokenCount)}</small>
-                  </span>
-                  <ArrowUpRight size={17} aria-hidden="true" />
-                </Link>
+                renderTodayItem(item)
               ))}
             </div>
             {todayTotalPages > 1 && (
@@ -416,7 +487,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
             )}
           </>
         ) : (
-          <p className="today-empty">Chưa có bài nào hôm nay. Hãy là người mở bài đầu tiên.</p>
+          <p className="today-empty">Chưa có video nào hôm nay. Hãy là người mở bài đầu tiên.</p>
         )}
       </section>
 

@@ -1,12 +1,9 @@
 # Escbase Read
 
-Ứng dụng Next.js đọc thread X hoặc bài blog, phân tích bằng OpenAI và lưu bài chia sẻ vào Supabase.
-Ngoài ra còn phân tích video YouTube/TikTok/Facebook Reel: tải video, chuyển giọng nói
-thành văn bản, rồi tóm tắt nội dung + kiểm chứng tính đúng sai bằng web search.
-
-Với link X/Twitter, app dùng thư viện [`@steipete/bird`](https://www.npmjs.com/package/@steipete/bird)
-để đọc thread, replies và link tác giả thông qua cookie X (`auth_token`, `ct0`).
-Đây không phải X API chính thức, nên có thể hỏng khi X thay đổi giao diện/API nội bộ.
+Ứng dụng Next.js đọc nhanh video YouTube/TikTok/Facebook Reel: tải video, chuyển
+giọng nói thành văn bản, rồi tóm tắt nội dung + kiểm chứng tính đúng sai bằng
+web search local. App lưu bài vào thư viện riêng theo tài khoản Google đang
+đăng nhập.
 
 Với link video YouTube/TikTok/Facebook Reel, app dùng
 [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) để tải âm thanh và
@@ -24,7 +21,8 @@ app/
   layout.tsx               Metadata, fonts, Vercel Analytics/Speed Insights
   [shareSlug]/page.tsx     Trang chia sẻ dạng /ten-bai-viet-<id>
   a/[slug]/page.tsx        Route cũ, redirect sang URL chia sẻ mới
-  api/analyze/route.ts     API đọc nguồn, gọi OpenAI, lưu cache
+  api/analyze/route.ts     API tạo job phân tích video
+  api/analyze/job/[jobId]  API đọc trạng thái job video
   api/quota/route.ts       API trả quota token trong ngày
 components/
   analyzer.tsx             Form nhập link, danh sách bài hôm nay, quota footer
@@ -33,9 +31,10 @@ components/
   quota-meter.tsx          Thanh quota
   auth-gate.tsx            Màn hình đăng nhập Google / từ chối truy cập
 lib/
-  analyze.ts               Gọi OpenAI và ép JSON schema (nguồn X/blog)
-  bird.ts                  Đọc thread/replies X bằng @steipete/bird
-  source.ts                Chọn nguồn video/X/web, đọc link liên quan
+  analysis-jobs.ts         Worker nền xử lý video job
+  analyze.ts               Legacy: gọi OpenAI cho nguồn text cũ
+  bird.ts                  Legacy: đọc thread/replies X bằng @steipete/bird
+  source.ts                Chọn nguồn video, legacy X/web vẫn còn cho code cũ
   video-platform.ts        Nhận diện link YouTube/TikTok/Facebook Reel (client-safe)
   video.ts                 Tải audio bằng yt-dlp, transcribe bằng faster-whisper
   video-analyze.ts         Agent + local_web_search để tóm tắt & kiểm chứng video
@@ -45,7 +44,7 @@ lib/
   language.ts              Helper kiểm tra output có lẫn ngôn ngữ khác tiếng Việt
   web.ts                   Đọc trang blog/web thường
   supabase.ts              Cache bài viết, lấy bài chia sẻ, danh sách hôm nay
-  quota.ts                 Quota token chung (gpt-5.4 + gpt-5.4-mini) cho video và X/blog
+  quota.ts                 Quota token video (gpt-5.4 + gpt-5.4-mini)
   share-url.ts             Tạo URL chia sẻ có tiêu đề
   auth.ts                  requireAllowedUser() — chặn API theo allowlist Google
   auth-context.tsx         React context chia access token cho các component con
@@ -69,7 +68,6 @@ public/
   escbase-read-og.png      Ảnh share/OG
   escbase-hero-background.jpg
   esclogo-classic-v2.png
-  x-logo-official.svg
 ```
 
 ## Chạy local
@@ -149,8 +147,8 @@ Domain tunnel: https://fast.escbase.xyz
 
 ### Cài công cụ cho phân tích video (yt-dlp + ffmpeg + faster-whisper)
 
-Bỏ qua phần này nếu chỉ cần đọc X/blog. Để phân tích video YouTube/TikTok/
-Facebook Reel, cần thêm ở máy chạy app (macOS, dùng Homebrew):
+Để phân tích video YouTube/TikTok/Facebook Reel, cần thêm ở máy chạy app
+(macOS, dùng Homebrew):
 
 ```bash
 brew install yt-dlp ffmpeg
@@ -224,8 +222,6 @@ OPENAI_DAILY_USAGE_OFFSET_DATE=2026-06-06
 
 Quota token là một hệ thống chung theo từng model:
 
-- X/blog luôn dùng `OPENAI_MODEL`, hiện chỉ cho phép `gpt-5.4-mini`, và dừng ở
-  ngưỡng an toàn `OPENAI_FREE_SAFE_LIMIT`.
 - Video thử `gpt-5.4` trước theo bucket `OPENAI_FULL_*`; nếu bucket này không
   đủ quota thì tự fallback sang `gpt-5.4-mini`.
 - Cả hai bucket đều được lưu trong `ai_daily_usage` theo cặp `(usage_day, model)`
@@ -238,30 +234,6 @@ hiệu lực vào ngày UTC tiếp theo.
 Web search trong video fact-check là tool local, nên không tạo dòng phí OpenAI
 hosted `web_search` trong usage. OpenAI vẫn tính token model cho phần agent đọc
 kết quả search và viết phân tích.
-
-### X / Bird
-
-```dotenv
-AUTH_TOKEN=
-CT0=
-```
-
-`AUTH_TOKEN` và `CT0` là cookie X của tài khoản dùng để đọc dữ liệu bằng Bird.
-Không commit hai giá trị này và không đặt dưới tiền tố `NEXT_PUBLIC_`.
-
-Cách lấy `auth_token` và `ct0` trên Chrome/Edge:
-
-1. Đăng nhập X tại `https://x.com`.
-2. Mở DevTools: `Option + Command + I` trên macOS hoặc `F12` trên Windows.
-3. Vào tab `Application`.
-4. Chọn `Storage` -> `Cookies` -> `https://x.com`.
-5. Tìm cookie `auth_token`, copy cột `Value` vào `AUTH_TOKEN`.
-6. Tìm cookie `ct0`, copy cột `Value` vào `CT0`.
-7. Nếu không thấy `ct0`, mở tab Network, reload `x.com`, bấm một request tới
-   `x.com`, kiểm tra phần Request Headers/Cookie rồi tìm `ct0=...`.
-
-Lưu ý: đây là cookie đăng nhập. Hãy dùng tài khoản phụ/ít quyền nếu triển khai
-production, và rotate cookie nếu nghi ngờ bị lộ.
 
 ### Supabase
 
@@ -287,6 +259,7 @@ Chạy lần lượt các file trong Supabase SQL Editor:
 3. `supabase/migrations/003_add_analysis_token_count.sql`
 4. `supabase/migrations/004_allow_video_source_type.sql`
 5. `supabase/migrations/005_ai_daily_usage_model_column.sql`
+6. `supabase/migrations/006_analysis_owners_and_jobs.sql`
 
 Migration thứ hai tạo bộ đếm giao dịch để nhiều request đồng thời không vượt ngưỡng.
 Production sẽ không gọi OpenAI nếu thiếu cấu hình Supabase.
@@ -308,6 +281,11 @@ này tự sửa lại dòng đó về đúng ngày thật với `model = 'gpt-5.
 chạy migration này, app vẫn chạy bình thường** (code cũ và mới không tương
 thích RPC signature nên nếu code đã deploy nhưng DB chưa migrate, quota sẽ báo
 lỗi "Không thể kiểm tra quota" — nên chạy migration này ngay khi cập nhật code).
+
+Migration thứ sáu thêm `owner_user_id` cho bảng `analyses` và tạo bảng
+`analysis_jobs`. Đây là migration bắt buộc cho thư viện riêng theo tài khoản và
+luồng video chạy nền. Nếu chưa chạy migration này, app sẽ không tạo được job
+phân tích video mới.
 
 ### Đăng nhập Google + allowlist email
 
@@ -369,11 +347,10 @@ WHISPER_DEVICE=cpu
 VIDEO_MAX_DURATION_SECONDS=1200
 ```
 
-Quota token là **một hệ thống chung** cho cả phân tích video và X/blog, theo
-hai free tier thật của OpenAI (cấu hình ở phần OpenAI phía trên):
+Quota token dùng hai free tier thật của OpenAI (cấu hình ở phần OpenAI phía trên):
 
-- `gpt-5.4-mini` (`OPENAI_FREE_*`, mặc định 2.5M/ngày): X/blog luôn dùng model
-  này; video dùng khi `gpt-5.4` đã hết quota.
+- `gpt-5.4-mini` (`OPENAI_FREE_*`, mặc định 2.5M/ngày): video dùng khi
+  `gpt-5.4` đã hết quota.
 - `gpt-5.4` (`OPENAI_FULL_*`, mặc định 250k/ngày): video thử model này trước
   để có chất lượng kiểm chứng cao hơn.
 
@@ -389,10 +366,11 @@ tránh tải/transcribe/phân tích quá lâu trong một request. `WHISPER_MODE
 càng lớn (`small` -> `medium` -> `large-v3`) thì transcript càng chính xác
 nhưng càng chậm trên CPU; `int8` compute type phù hợp cho CPU thông thường.
 
-Route `/api/analyze` đặt `maxDuration = 300` cho nhánh video. `next dev`/
-`next start` không bị giới hạn này; trên Vercel, video dài hoặc nhiều tuyên bố
-cần kiểm chứng có thể cần Fluid Compute hoặc plan cao hơn để chạy hết trong
-một function.
+Route `/api/analyze` chỉ tạo job video rồi trả về ngay. Worker nền trong Node
+process local sẽ tải/transcribe/phân tích tiếp; nếu người dùng rời tab, bài vẫn
+nằm trong thư viện và có thể quay lại xem kết quả sau. `next dev`/`next start`
+phù hợp với mô hình self-host này; trên Vercel serverless tiêu chuẩn, worker
+nền không phải môi trường triển khai phù hợp cho pipeline video dài.
 
 ### App/security
 
@@ -405,10 +383,9 @@ Hãy đổi giá trị này trên production.
 
 ## Deploy Vercel
 
-- Chọn Node.js `22.x` hoặc mới hơn vì Bird yêu cầu Node 22.
+- Chọn Node.js `22.x` hoặc mới hơn.
 - Thêm toàn bộ biến môi trường ở trên vào Vercel Project Settings.
-- Không đặt `OPENAI_API_KEY`, `AUTH_TOKEN`, `CT0` hoặc service role key dưới tiền tố `NEXT_PUBLIC_`.
-- Bird dùng cookie X nội bộ và có thể hỏng khi X thay đổi GraphQL. Theo dõi log và chuẩn bị phương án X API chính thức cho production.
+- Không đặt `OPENAI_API_KEY` hoặc service role key dưới tiền tố `NEXT_PUBLIC_`.
 - **Phân tích video hiện chưa chạy được trên Vercel serverless function tiêu
   chuẩn**: pipeline cần `yt-dlp`, `ffmpeg` và một Python venv có `faster-whisper`
   cài sẵn trên host, còn Vercel Node function không có các binary/venv này và
@@ -424,10 +401,10 @@ Hãy đổi giá trị này trên production.
   nay") yêu cầu đăng nhập Google và chỉ mở cho các email trong
   `ALLOWED_EMAIL`. Trang chia sẻ (`/ten-bai-viet-<id>`) vẫn công khai, không
   cần đăng nhập.
-- Người dùng chỉ nên dán link X/Twitter, blog hoặc video YouTube/TikTok/
-  Facebook Reel công khai. Không dán nội dung riêng tư, nội bộ hoặc cần bảo mật.
-- Nội dung nguồn công khai, replies/link liên quan và bài tóm tắt được gửi tới
-  OpenAI để phân tích.
+- Người dùng chỉ nên dán link video YouTube/TikTok/Facebook Reel công khai.
+  Không dán nội dung riêng tư, nội bộ hoặc cần bảo mật.
+- Nội dung video công khai, transcript và bài tóm tắt được gửi tới OpenAI để
+  phân tích.
 - Với video: app tải tạm video/audio về thư mục temp của hệ điều hành, xoá
   ngay sau khi transcribe xong (thành công hoặc lỗi). Bản transcript, tiêu đề,
   mô tả video được gửi tới OpenAI (Agents SDK) để tóm tắt và kiểm chứng; các
@@ -439,8 +416,8 @@ Hãy đổi giá trị này trên production.
 - Link chia sẻ dạng `/ten-bai-viet-<id>` là công khai với bất kỳ ai có URL.
 - Vercel Analytics và Speed Insights có thể thu thập telemetry vận hành cơ bản
   theo cấu hình của Vercel.
-- `AUTH_TOKEN`, `CT0`, `OPENAI_API_KEY` và Supabase secret chỉ được dùng ở
-  backend; không được đưa vào biến `NEXT_PUBLIC_` hoặc commit lên Git.
+- `OPENAI_API_KEY` và Supabase secret chỉ được dùng ở backend; không được đưa
+  vào biến `NEXT_PUBLIC_` hoặc commit lên Git.
 
 ## License & notices
 

@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
   const pageSize = Number(request.nextUrl.searchParams.get("pageSize") ?? 10);
 
   try {
-    await requireAllowedUser(request);
-    return NextResponse.json(await getTodayAnalysesPage(page, pageSize), {
+    const { user } = await requireAllowedUser(request);
+    return NextResponse.json(await getTodayAnalysesPage(user.id, page, pageSize), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

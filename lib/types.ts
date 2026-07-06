@@ -63,11 +63,14 @@ export type StoredAnalysis = {
 };
 
 export type AnalysisListItem = {
-  slug: string;
+  id: string;
+  slug: string | null;
   title: string;
   sourceType: SourceType;
   createdAt: string;
   tokenCount: number | null;
+  status: "succeeded" | "queued" | "processing" | "failed";
+  error: string | null;
 };
 
 export type TodayAnalyses = {
