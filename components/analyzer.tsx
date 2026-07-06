@@ -113,7 +113,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [queuedMessage, setQueuedMessage] = useState("");
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRunRef = useRef(0);
   const todayTotalPages = Math.max(1, Math.ceil(todayCount / TODAY_PAGE_SIZE));
@@ -189,7 +188,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
     event.preventDefault();
     setError("");
     setQueuedMessage("");
-    setActiveJobId(null);
     setLoadingStep(0);
     setLoadingProgress(7);
 
@@ -212,7 +210,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
       if (!response.ok) throw new Error(body.error || "Không thể phân tích đường dẫn.");
 
       if (response.status === 202 && body.jobId) {
-        setActiveJobId(body.jobId);
         setQueuedMessage(
           body.message || "Bài viết đã được thêm vào thư viện. Bạn có thể chờ xem kết quả hoặc quay lại sau.",
         );
@@ -415,7 +412,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
                 </div>
               )}
               <div className="loading-progress-top">
-                <span>{currentLoadingStep.detail}</span>
                 <strong>{loadingProgress}%</strong>
               </div>
               <div
@@ -428,13 +424,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
               >
                 <span style={{ width: `${loadingProgress}%` }} />
               </div>
-              <p>
-                {queuedMessage
-                  ? "Bạn có thể tiếp tục chờ trên trang này; khi xong app sẽ tự mở kết quả."
-                  : activeJobId
-                    ? "Bài đã nằm trong thư viện. Nếu rời app, bạn vẫn có thể quay lại xem kết quả."
-                    : "Video có thể mất 1-3 phút để tải, transcribe và kiểm chứng, tuỳ độ dài."}
-              </p>
             </div>
           )}
           {error && <p className="form-error">{error}</p>}

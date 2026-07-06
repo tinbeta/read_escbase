@@ -365,15 +365,9 @@ button { cursor: pointer; }
 .loading-progress-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
   font-size: 11px;
   font-weight: 700;
-}
-.loading-progress-top span {
-  min-width: 0;
-  color: #dbe6d8;
-  line-height: 1.45;
 }
 .loading-progress-top strong {
   color: var(--orange);
@@ -402,12 +396,6 @@ button { cursor: pointer; }
   inset: 0;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.58), transparent);
   animation: loadingSweep 1.4s ease-in-out infinite;
-}
-.loading-progress-card p {
-  margin: 9px 0 0;
-  color: #aabcb2;
-  font-size: 10px;
-  line-height: 1.5;
 }
 .privacy-note {
   margin: 16px 0 0;
