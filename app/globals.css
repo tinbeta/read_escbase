@@ -12,10 +12,7 @@
   --mint: #cdddbb;
   --blue: #d8e2cb;
   --shadow: 0 26px 80px rgba(0, 18, 11, 0.2);
-  --app-bg:
-    radial-gradient(circle at 8% 0%, rgba(197, 214, 168, 0.42), transparent 28rem),
-    radial-gradient(circle at 94% 18%, rgba(245, 155, 66, 0.12), transparent 27rem),
-    var(--paper);
+  --app-bg: var(--paper);
 }
 
 * { box-sizing: border-box; }
@@ -24,19 +21,6 @@ html {
   scroll-behavior: smooth;
   min-height: 100%;
   background: var(--app-bg);
-}
-html::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.3;
-  background-image:
-    linear-gradient(rgba(20, 37, 28, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 37, 28, 0.055) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(to bottom, #000 0, transparent 820px);
 }
 body {
   margin: 0;
