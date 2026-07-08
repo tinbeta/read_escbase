@@ -109,7 +109,7 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
   const [todayCount, setTodayCount] = useState(initialTodayAnalyses.count);
   const [todayItems, setTodayItems] = useState(initialTodayAnalyses.items);
   const [todayPage, setTodayPage] = useState(1);
-  const [todayLoading, setTodayLoading] = useState(false);
+  const [todayLoading, setTodayLoading] = useState(initialTodayAnalyses.items.length === 0);
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [queuedMessage, setQueuedMessage] = useState("");
@@ -290,10 +290,6 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
     setAnalysis(null);
     setError("");
     setUrl("");
-    window.requestAnimationFrame(() => {
-      document.querySelector(".hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      inputRef.current?.focus({ preventScroll: true });
-    });
   }
 
   function renderTodayItem(item: AnalysisListItem) {
@@ -480,6 +476,8 @@ export function Analyzer({ initialTodayAnalyses }: Props) {
               </div>
             )}
           </>
+        ) : todayLoading ? (
+          <p className="today-empty">Đang cập nhật thư viện...</p>
         ) : (
           <p className="today-empty">Chưa có video nào hôm nay. Hãy là người mở bài đầu tiên.</p>
         )}
