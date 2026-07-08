@@ -286,10 +286,6 @@ export function VideoAnalysisView({ result, sourceUrl, slug, createdAt, tokenCou
       </p>
 
       <div className="video-bottom-actions">
-        <button type="button" className="video-share-action" onClick={copyArticleLink}>
-          {linkCopied ? <Check size={16} /> : <Copy size={16} />}
-          {linkCopied ? "Đã copy link" : "Copy & chia sẻ"}
-        </button>
         {onAnalyzeAnother ? (
           <button type="button" onClick={onAnalyzeAnother}>
             <ArrowUpRight size={16} />
@@ -301,6 +297,14 @@ export function VideoAnalysisView({ result, sourceUrl, slug, createdAt, tokenCou
             Phân tích video khác
           </Link>
         )}
+        <button
+          type="button"
+          className={`video-share-action${linkCopied ? " is-copied" : ""}`}
+          onClick={copyArticleLink}
+        >
+          {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+          {linkCopied ? "Đã copy link" : "Copy & chia sẻ"}
+        </button>
       </div>
     </article>
   );

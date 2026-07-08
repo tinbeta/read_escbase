@@ -280,10 +280,6 @@ export function AnalysisView({ result, sourceUrl, slug, createdAt, tokenCount, o
       </p>
 
       <div className="article-bottom-actions">
-        <button type="button" className="article-share-action" onClick={copyArticleLink}>
-          {linkCopied ? <Check size={17} /> : <Copy size={17} />}
-          {linkCopied ? "Đã copy link" : "Copy & chia sẻ"}
-        </button>
         {onAnalyzeAnother ? (
           <button type="button" onClick={onAnalyzeAnother}>
             <ArrowUpRight size={17} />
@@ -295,6 +291,14 @@ export function AnalysisView({ result, sourceUrl, slug, createdAt, tokenCount, o
             Phân tích bài khác
           </Link>
         )}
+        <button
+          type="button"
+          className={`article-share-action${linkCopied ? " is-copied" : ""}`}
+          onClick={copyArticleLink}
+        >
+          {linkCopied ? <Check size={17} /> : <Copy size={17} />}
+          {linkCopied ? "Đã copy link" : "Copy & chia sẻ"}
+        </button>
       </div>
     </article>
   );

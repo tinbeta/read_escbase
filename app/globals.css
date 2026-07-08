@@ -986,7 +986,11 @@ button { cursor: pointer; }
 }
 .article-share-action {
   color: #fff;
-  background: var(--orange-dark);
+  background: var(--orange);
+}
+.article-share-action.is-copied {
+  color: #eaffef;
+  background: #2f7d52;
 }
 .article-bottom-actions a:hover,
 .article-bottom-actions button:hover {
@@ -994,7 +998,10 @@ button { cursor: pointer; }
   background: var(--orange-dark);
 }
 .article-share-action:hover {
-  background: var(--ink);
+  background: var(--orange);
+}
+.article-share-action.is-copied:hover {
+  background: #2f7d52;
 }
 
 /* Video result page — redesigned as its own compact, mobile-first layout
@@ -1318,12 +1325,17 @@ button { cursor: pointer; }
   font-weight: 700;
   transition: transform 0.2s ease, background 0.2s ease;
 }
-.video-bottom-actions .video-share-action { background: var(--orange-dark); }
+.video-bottom-actions .video-share-action { background: var(--orange); }
+.video-bottom-actions .video-share-action.is-copied {
+  color: #eaffef;
+  background: #2f7d52;
+}
 .video-bottom-actions a:hover, .video-bottom-actions button:hover {
   transform: translateY(-2px);
   background: var(--orange-dark);
 }
-.video-bottom-actions .video-share-action:hover { background: var(--ink); }
+.video-bottom-actions .video-share-action:hover { background: var(--orange); }
+.video-bottom-actions .video-share-action.is-copied:hover { background: #2f7d52; }
 
 .ai-disclaimer {
   margin: 16px 0 0;
@@ -1529,8 +1541,19 @@ button { cursor: pointer; }
   .sentiment { margin-left: 0; }
   .video-claim-sources a { max-width: 220px; }
   .takeaway-card { border-radius: 0 0 20px 20px; }
-  .article-bottom-actions { display: grid; }
-  .article-bottom-actions a, .article-bottom-actions button { width: 100%; }
+  .article-bottom-actions,
+  .video-bottom-actions {
+    display: grid;
+    gap: 12px;
+  }
+  .article-bottom-actions a,
+  .article-bottom-actions button,
+  .video-bottom-actions a,
+  .video-bottom-actions button {
+    width: 100%;
+    min-height: 56px;
+    font-size: 15px;
+  }
   .site-footer { display: grid; gap: 7px; }
 }
 
