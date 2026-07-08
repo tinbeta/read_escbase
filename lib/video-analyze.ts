@@ -13,7 +13,7 @@ import { normalizeVideoAnalysisResult } from "@/lib/video-result";
 
 const MAX_TRANSCRIPT_CHARS = 20_000;
 const MAX_DESCRIPTION_CHARS = 2_000;
-const MAX_TURNS = 8;
+const MAX_TURNS = 16;
 
 const SYSTEM_PROMPT = `Bạn là biên tập viên tóm tắt và kiểm chứng nội dung video ngắn
 (TikTok, YouTube Short, Facebook Reel) bằng tiếng Việt cho người đọc trên điện thoại.
